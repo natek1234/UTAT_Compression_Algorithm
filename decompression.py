@@ -1,6 +1,5 @@
 #Purpose: losslessly (or near-losslessly) decompress an image which was compressed by the 
 #         CCSDS123 standard compression.
-
 import numpy as np
 
 def decode():
@@ -17,4 +16,4 @@ def main()
 
 
 
-main()
+main() 
