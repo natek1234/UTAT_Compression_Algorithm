@@ -1,6 +1,13 @@
 #Purpose: losslessly (or near losslessly) compress an image using the CCSDS123 standard
 
+# install pip
+# then 'pip install scipy' get it
+
 import numpy as np
+import scipy.io         # loading .mat files
+import matplotlib.pyplot as plt # visualization
+import matplotlib.animation as animation
+
 
 #Miscellaneous constants
 dynamic_range = 32 #user-specified parameter between 2 and 32
@@ -59,20 +66,50 @@ def encoder(delta):
 
     return encoded 
 
-#Runs the compression algorithm
-def main():
 
-    #Load input data/image
-    data = datalib.load_data_hdf5(path="images/indian_pines.mat", header="indian_pines")
-    data = data[0:data_shape[0],0:data_shape[1],0:data_shape[2]]
+'''
+#Load input data/image
+# data = datalib.load_data_hdf5(path="images/indian_pines.mat", header="indian_pines")
+data = scipy.io.loadmat("images/indian_pines.mat")
+data = data[0:data_shape[0],0:data_shape[1],0:data_shape[2]]
 
-    #Run predictor
-    delta = predictor(data)
+#Run predictor
+delta = predictor(data)
 
-    #Run encoder
-    comp_image = encoder(delta)
+#Run encoder
+comp_image = encoder(delta)
 
-    #We need to write this encoded compressed image to a file -> need more research on this
+#We need to write this encoded compressed image to a file -> need more research on this
+'''
 
 
-main()
+# scripts for testing
+indian_pines = scipy.io.loadmat("images/indian_pines.mat")
+
+# scipy.io.loadmat() returns dictionary of data
+print(indian_pines.keys())
+data = indian_pines['indian_pines']
+
+# data is 145x145x220
+# first 2 axis is spatial, the last one (220) is spectral
+# pictures looks like a shitty top down satellite image of supposedly "indian pines"
+
+plt.figure(1)
+plt.imshow(data[:,:,len(data[0,0])//2]) # plot spatial data, and the middle spectral data
+plt.title("Middle of the spectrum")
+plt.xlabel("x")
+plt.ylabel("y")
+
+plt.figure(2)
+plt.imshow(data[:,:,len(data[0,0])-1]) # plot spatial data, and the middle spectral data
+plt.title("end of the spectrum")
+plt.xlabel("x")
+plt.ylabel("y")
+
+plt.figure(3)
+plt.imshow(data[:,:,0]) # plot spatial data, and the middle spectral data
+plt.title("start of the spectrum")
+plt.xlabel("x")
+plt.ylabel("y")
+
+plt.show()
