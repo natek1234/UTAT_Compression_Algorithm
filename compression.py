@@ -19,44 +19,65 @@ damping = 0 #Any integer value from 0 to 2^resolution - 1
 offset = 0 #any integer value from 0 to 2^resolution -1
 max_error = 0 #Max error is an array for each pixel in the image, but for now is used as a single variable
 
+
 #Calculates sample representative values for a given index, which are needed to calcuulate the next local sum in the image
-def sample_rep_value(z,y,x, Nx):
-    t = y*(Nx) + x
-    
+def sample_rep_value(t, data, predicted_sample, quantized, hr_pred_sample_value):
+     
+     #If in the first sample in a band, the sample representative is equal to the data value
     if t == 0:
-        sample_rep = data[z,y,x]
-    else:
-        quant_clipped = np.clip((predicted_sample[z,y,x] + ((quantized[z,y,x])*(2*max_error+1))), s_min, s_max)
+        sample_rep = data
 
-        dr_sample_rep = 4*((2**resolution)-damping) * (quant_clipped*(2**weight_resolution) - (np.sign(quantized[z,y,x])*max_error*offset*(2**(weight_resolution - resolution))))
-        + (damping*(hr_pred_sample_value[z,y,x])) - (damping*(2**(weight_resolution+1)))
+    #Otherwise, calculations are made according to page 4-12
+    else: 
+        #The quantizer value is clipped using equation 48
+        clipped_quant = np.clip(predicted_sample + (quantized*(2*max_error+1)), s_min, s_max)
 
+        #The double-resolution sample value is calculated next (Equation 47). Each section is a part of the complete equation
+        section_one =  4*((2**resolution)-damping) 
+
+        #Section 2 includes the clipped quantizer value and the sign of the original quantizer value
+        section_two =  (clipped_quant*(2**weight_resolution)) - ((np.sign(quantized))*max_error*offset*(2**(weight_resolution - resolution)))
+
+        #Section 3 includes the high-resolution predicted sample value calculated in section 4.7.2
+        section_three = (damping*(hr_pred_sample_value)) - (damping*(2**(weight_resolution+1)))
+
+        #The final double-resolution sample value:
+        dr_sample_rep = np.floor((section_one*section_two + section_three)/(2**(resolution+weight_resolution+1)))
+
+        #The sample rep value is calculated using the dr_sample_rep(Equation 46)
         sample_rep = np.floor((dr_sample_rep+1)/2)
-
+    
     return sample_rep
 
-#Calculates local sums based on a given index - note, value when x = 0 and y = 0 is not calculated, as it is not needed for prediction
-def local_sums(z,y,x, Nx):
-
+'''Calculates a local sum for a pixel - note, value when x = 0 and y = 0 is not calculated, as it is not needed for prediction.
+Calculations are made using wide neighbor-oriented local sums specification (Equation 20 page 4-4) '''
+def local_sums(x,y,z,Nx, sample_rep):
+    
+    # Calculation for the first row of a band
     if y==0 and x>0:
-        local_sum = 4*(sample_rep[z,y,x-1])
+        local_sum = 4*(sample_rep[x-1,y,z])
 
     elif y>0:
-        if x==0:
-            local_sum = 2*(sample_rep[z,y-1,x] + sample_rep[z,y-1,x+1])
-        elif x == (Nx-1):
-            local_sum = sample_rep[z,y,x-1] + sample_rep[z,y-1,x-1] + sample_rep[z,y-1,x]
-        else:
-            local_sum = sample_rep[z,y,x-1] + sample_rep[z,y-1,x-1] + sample_rep[z,y-1,x] + sample_rep[z,y-1,x+1]
+        if x==0: #First column of a band
+            local_sum = 2*(sample_rep[x,y-1,z] + sample_rep[x+1,y-1,z])
+
+        elif x == (Nx-1): #Last column of a band
+            local_sum = sample_rep[x-1,y,z] + sample_rep[x-1,y-1,z] + sample_rep[x,y-1,z]
+
+        else: # All other columns in the band
+            local_sum = sample_rep[x-1,y,z] + sample_rep[x-1,y-1,z] + sample_rep[x,y-1,z] + sample_rep[x+1,y-1,z]
+
     return local_sum
 
 
 
 #Predictor algorithm including Quantizer, Mapper, Sample Representative, and Prediction
 def predictor(data):
-    Nx = data.shape[2]
+    Nx = data.shape[0]
     Ny = data.shape[1]
-    Nz = data.shape[0]
+    Nz = data.shape[2]
+
+
 
     delta = []
     return delta 
@@ -116,3 +137,5 @@ plt.xlabel("x")
 plt.ylabel("y")
 
 plt.show()
+
+predictor(data)
