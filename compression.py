@@ -137,5 +137,3 @@ plt.xlabel("x")
 plt.ylabel("y")
 
 plt.show()
-
-predictor(data)
