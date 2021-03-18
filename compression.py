@@ -19,7 +19,25 @@ damping = 0 #Any integer value from 0 to 2^resolution - 1
 offset = 0 #any integer value from 0 to 2^resolution -1
 max_error = 0 #Max error is an array for each pixel in the image, but for now is used as a single variable
 
-#Calculates sample representative values for a given index, which are needed to calcuulate the next local sum in the image
+#Takes a sample and sample prediction and outputs a quantized value for the difference between the two
+#Note: s_prev refers to s_z-1 (0), or the very first entry in the previous spectral band
+def quantizer(s_hat,s, t, z, s_prev):
+
+    #First sample value for the first band
+    if t == 0 and z == 0:
+        return s_mid
+    #First sample value for every other band
+    if t == 0 and z > 0:
+        return s_prev
+    #For all t>0
+    else:
+        #Compute delta (residual)
+        delta = s - s_hat
+        #Return quantized delta
+        return np.sign(delta)*np.floor( (abs(delta) + max_error)/(2*max_error + 1) )
+
+
+#Calculates sample representative values for a given index, which are needed to calculate the next local sum in the image
 def sample_rep_value(z,y,x, Nx):
     t = y*(Nx) + x
     
@@ -54,9 +72,9 @@ def local_sums(z,y,x, Nx):
 
 #Predictor algorithm including Quantizer, Mapper, Sample Representative, and Prediction
 def predictor(data):
-    Nx = data.shape[2]
+    Nx = data.shape[0]
     Ny = data.shape[1]
-    Nz = data.shape[0]
+    Nz = data.shape[2]
 
     delta = []
     return delta 
@@ -92,6 +110,8 @@ indian_pines = scipy.io.loadmat("images/indian_pines.mat")
 # scipy.io.loadmat() returns dictionary of data
 print(indian_pines.keys())
 data = indian_pines['indian_pines']
+
+print(data.shape[2])
 
 # data is 145x145x220
 # first 2 axis is spatial, the last one (220) is spectral
