@@ -19,6 +19,23 @@ damping = 0 #Any integer value from 0 to 2^resolution - 1
 offset = 0 #any integer value from 0 to 2^resolution -1
 max_error = 0 #Max error is an array for each pixel in the image, but for now is used as a single variable
 
+#This mapper will take the quantized values and map them to unsigned integers
+def mapper(s_hat, q, t, s_z):
+
+    #Calculate theta (equation 56)
+    if t == 0:
+        theta = min(s_hat - s_min, s_max - s_hat)
+    else:
+        theta = min(np.floor((s_hat - s_min + max_error)/(2*max_error + 1)) , np.floor((s_max - s_hat + max_error)/(2*max_error + 1)))
+    
+    #Use theta to calculate Delta - the mapped quantizer index (equation 55)
+    if abs(q)>theta:
+        return abs(q) + theta
+    elif 0 <= ((-1)**s_z)*q and ((-1)**s_z)*q <= theta:
+        return 2*abs(q)
+    else:
+        return 2*abs(q) - 1
+
 #Takes a sample and sample prediction and outputs a quantized value for the difference between the two
 #Note: s_prev refers to s_z-1 (0), or the very first entry in the previous spectral band
 def quantizer(s_hat,s, t, z, s_prev):
@@ -110,8 +127,6 @@ indian_pines = scipy.io.loadmat("images/indian_pines.mat")
 # scipy.io.loadmat() returns dictionary of data
 print(indian_pines.keys())
 data = indian_pines['indian_pines']
-
-print(data.shape[2])
 
 # data is 145x145x220
 # first 2 axis is spatial, the last one (220) is spectral
