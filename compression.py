@@ -102,7 +102,7 @@ def local_diference_vector(x,y,z,sample_rep, local_sum, band, ld_vector):
             north_ld = 4(sample_rep[x,y-1,z]) - local_sum
             west_ld = 4(sample_rep[x-1,y,z]) - local_sum
             northwest_ld = 4(sample_rep[x-1,y-1,z]) - local_sum
-            ld_vector = np.append(ld_vector, [north_ld, ])
+            ld_vector = np.append(ld_vector, [north_ld, west_ld, northwest_ld])
         
         #Return the new local difference vector
         return ld_vector
