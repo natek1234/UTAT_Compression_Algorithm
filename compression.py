@@ -89,9 +89,37 @@ def local_sums(z,y,x, Nx):
 
 #Predictor algorithm including Quantizer, Mapper, Sample Representative, and Prediction
 def predictor(data):
+    #Grabe data shape dimensions
     Nx = data.shape[0]
     Ny = data.shape[1]
     Nz = data.shape[2]
+
+    #Initialized predictor variables
+    s_hat = None
+    s_prev = None
+
+    #Stores all quantized values
+    quantized = np.empty_like(data)
+
+    #stores all predictions
+    predictions = np.empty_like(data)
+
+    for z in range(0,Nz):
+        for x in range(0,Nx):
+            for y in range(0,Ny):
+                t = y*(Nx) + x
+                q = quantizer(s_hat, data[x,y,z], t, z, s_prev)
+                quantized[x,y,z] = q
+
+                #JASNOOR FUNCTION CALLS HERE - include a return for s_z which is high resolution value
+                s_z = None #temporary placeholder
+
+                mapped = mapper(s_hat, q, t, s_z)
+                #Set s_prev before
+        if z > 0:
+            s_prev = predictions[0,0,z]
+
+
 
     delta = []
     return delta 
