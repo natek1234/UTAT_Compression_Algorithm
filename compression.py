@@ -183,7 +183,6 @@ def prediction_calculation(ld_vector, weight_vector, local_sum, t, x, y, z, data
     return pred_sample_value, hr_pred_sample_value, dr_sample_value
 
 
-
 #This function updates the weight vector for the next t value based on the previous weight and the local difference value
 def weight_update(clipped_quant, dr_sample_value, t, Nx, band, weight_vector_prev, weight_vector, ld_vector):
 
