@@ -35,10 +35,43 @@ def sign(x):
     else:
         return -1
 
+#This mapper will take the quantized values and map them to unsigned integers
+def mapper(s_hat, q, t, s_z):
+
+    #Calculate theta (equation 56)
+    if t == 0:
+        theta = min(s_hat - s_min, s_max - s_hat)
+    else:
+        theta = min(np.floor((s_hat - s_min + max_error)/(2*max_error + 1)) , np.floor((s_max - s_hat + max_error)/(2*max_error + 1)))
+    
+    #Use theta to calculate Delta - the mapped quantizer index (equation 55)
+    if abs(q)>theta:
+        return abs(q) + theta
+    elif 0 <= ((-1)**s_z)*q and ((-1)**s_z)*q <= theta:
+        return 2*abs(q)
+    else:
+        return 2*abs(q) - 1
+
+#Takes a sample and sample prediction and outputs a quantized value for the difference between the two
+#Note: s_prev refers to s_z-1 (0), or the very first entry in the previous spectral band
+def quantizer(s_hat,s, t, z, s_prev):
+
+    #First sample value for the first band
+    if t == 0 and z == 0:
+        return s_mid
+    #First sample value for every other band
+    if t == 0 and z > 0:
+        return s_prev
+    #For all t>0
+    else:
+        #Compute delta (residual)
+        delta = s - s_hat
+        #Return quantized delta
+        return np.sign(delta)*np.floor( (abs(delta) + max_error)/(2*max_error + 1) )
+
 #Calculates sample representative values for a given index, which are needed to calcuulate the next local sum in the image
-def sample_rep_value(t, data, predicted_sample, quantized, hr_pred_sample_value):
-     
-     #If in the first sample in a band, the sample representative is equal to the data value
+def sample_rep_value(t, data, predicted_sample, quantized, hr_pred_sample_value):   
+    #If in the first sample in a band, the sample representative is equal to the data value
     if t == 0:
         sample_rep = data
 
@@ -235,13 +268,37 @@ def weight_update(clipped_quant, dr_sample_value, t, Nx, band, weight_vector_pre
 
 #Predictor algorithm including Quantizer, Mapper, Sample Representative, and Prediction
 def predictor(data):
+  
+    #Grab data shape dimensions
     Nx = data.shape[0]
     Ny = data.shape[1]
     Nz = data.shape[2]
-
-
-
+    
+    #Initialized predictor variables
+    s_hat = None
+    s_prev = None
     delta = []
+
+    #Stores all quantized values
+    quantized = np.empty_like(data)
+
+    #stores all predictions
+    predictions = np.empty_like(data)
+
+    for z in range(0,Nz):
+        for x in range(0,Nx):
+            for y in range(0,Ny):
+                t = y*(Nx) + x
+                q = quantizer(s_hat, data[x,y,z], t, z, s_prev)
+                quantized[x,y,z] = q
+
+                #JASNOOR FUNCTION CALLS HERE - include a return for s_z which is high resolution value
+                s_z = None #temporary placeholder
+
+                mapped = mapper(s_hat, q, t, s_z)
+                #Set s_prev before
+        if z > 0:
+            s_prev = predictions[0,0,z]
     return delta 
 
 #Encodes the delta values from the predictor
