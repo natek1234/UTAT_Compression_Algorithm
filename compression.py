@@ -20,7 +20,20 @@ offset = 0 #any integer value from 0 to 2^resolution -1
 max_error = 0 #Max error is an array for each pixel in the image, but for now is used as a single variable
 number_of_bands = 9 #user-defined parameter between 0 and 15 that indicates that number of previous bands used for prediction
 register_size = 50 #user-defined parameter from max{32, 2^(D+weight_resolution+1)} to 64
+v_min = -6 #vmin and vmax are user-defined parameters that control the rate at which the algorithm adapts to data statistics
+v_max = 9 # -6 <= v_min < v_max <= 9
+t_inc = (2**4) #parameter from 2^4 to 2^11
+interband = 1 #interband and intraband offsets are used in updating of weight values (can be between -6 and 5)
+intraband = 1
+w_min = -(2**(weight_resolution+1)) #w_min and w_max values are used in weight updates (Equation 30)
+w_max = 2**(weight_resolution+2) - 1
 
+#Function required for weight update - not the same as numpy.sign so I had to quickly make it
+def sign(x):
+    if x >= 0:
+        return 1
+    else:
+        return -1
 
 #Calculates sample representative values for a given index, which are needed to calcuulate the next local sum in the image
 def sample_rep_value(t, data, predicted_sample, quantized, hr_pred_sample_value):
@@ -49,7 +62,7 @@ def sample_rep_value(t, data, predicted_sample, quantized, hr_pred_sample_value)
         #The sample rep value is calculated using the dr_sample_rep(Equation 46)
         sample_rep = np.floor((dr_sample_rep+1)/2)
     
-    return sample_rep, dr_sample_rep
+    return sample_rep, dr_sample_rep, clipped_quant
 
 #Calculates a local sum for a pixel - note, value when x = 0 and y = 0 is not calculated, as it is not needed for prediction.
 #Calculations are made using wide neighbor-oriented local sums specification (Equation 20 page 4-4)
@@ -81,7 +94,7 @@ def local_diference_vector(x,y,z,sample_rep, local_sum, band, ld_vector):
     if band>0:
 
         #Equation 24
-        central_ld = 4(sample_rep[x,y,z]) - local_sum
+        central_ld = 4*(sample_rep[x,y,z]) - local_sum
         #Append the value to the local difference vector
         ld_vector = np.append(ld_vector, central_ld)
         return ld_vector
@@ -94,15 +107,15 @@ def local_diference_vector(x,y,z,sample_rep, local_sum, band, ld_vector):
         
         #When x ==0, the local differences all have the same calculation
         elif x == 0:
-            north_ld = 4(sample_rep[x,y-1,z]) - local_sum
+            north_ld = 4*(sample_rep[x,y-1,z]) - local_sum
             ld_vector = np.append(ld_vector, [north_ld, north_ld, north_ld])
         
         #Otherwise, calculations from equations 25,26, and 27 are used
         else:
-            north_ld = 4(sample_rep[x,y-1,z]) - local_sum
-            west_ld = 4(sample_rep[x-1,y,z]) - local_sum
-            northwest_ld = 4(sample_rep[x-1,y-1,z]) - local_sum
-            ld_vector = np.append(ld_vector, [north_ld, ])
+            north_ld = 4*(sample_rep[x,y-1,z]) - local_sum
+            west_ld = 4*(sample_rep[x-1,y,z]) - local_sum
+            northwest_ld = 4*(sample_rep[x-1,y-1,z]) - local_sum
+            ld_vector = np.append(ld_vector, [north_ld, west_ld, northwest_ld])
         
         #Return the new local difference vector
         return ld_vector
@@ -122,17 +135,18 @@ def weight_initialization(band, weight_vector):
 
     #The next bands, up until the final one used for prediction, are initialized using equation 33(b)
     else:
-        weight_i = np.floor((1/8)*weight_vector[end])
+        w_length = len(weight_vector)
+        weight_i = np.floor((1/8)*weight_vector[w_length-1])
         weight_vector = np.append(weight_vector, weight_i)
     
 
     return weight_vector
 
 #Computes a predicted sample value based on the local differences and weight vectors
-def prediction_calculation(ld_vector, weight_vector, local_sum, t, z, data):
+def prediction_calculation(ld_vector, weight_vector, local_sum, t, x, y, z, data):
 
     #Inner product of local difference and weight vectors is taken , according to Equation 36
-    pred_difference = np.inner(weight_vector, ld_vector))
+    pred_difference = np.inner(weight_vector, ld_vector)
 
     #Next, the high resolution predicted sample value is calculated according to equation 37
     #Here, it is broken up into several sections 
@@ -166,7 +180,57 @@ def prediction_calculation(ld_vector, weight_vector, local_sum, t, z, data):
     pred_sample_value = dr_sample_value/2
 
     #Both the predicted and hr predicted sample value are returned - latter is used in sample rep calculation
-    return pred_sample_value, hr_pred_sample_value
+    return pred_sample_value, hr_pred_sample_value, dr_sample_value
+
+
+
+#This function updates the weight vector for the next t value based on the previous weight and the local difference value
+def weight_update(clipped_quant, dr_sample_value, t, Nx, band, weight_vector_prev, weight_vector, ld_vector):
+
+    #Prediction error is calculated using equation 49s
+    prediction_error = 2*clipped_quant - dr_sample_value
+
+    #Next, the weight update scaling exponent is calculated, using user parameters of t_inc, v_min, and v_max (Equation 50)
+    temp_1 = v_min + np.floor((t-Nx)/t_inc)
+    weight_exponent = np.clip(temp_1, v_min, v_max) + dynamic_range - weight_resolution
+
+    #If we're in the original band, we update the north, west, and northwest weights
+    if band == 0:
+
+        #The base calculation is used for all three values - Equations 52-54
+        base = sign(prediction_error)*(2**(-(weight_exponent+intraband)))
+
+        #The temporary north, west, and northwest values are calculated using the previous weight vector
+        temp_n = weight_vector_prev[0] + np.floor((1/2)*(base*ld_vector[0] +1))
+        temp_w = weight_vector_prev[1] + np.floor((1/2)*(base*ld_vector[1] +1))
+        temp_nw = weight_vector_prev[2] + np.floor((1/2)*(base*ld_vector[2] +1))
+
+        #The temporary values are clipped to the user-defined min-max range for weight
+        updated_n = np.clip(temp_n, w_min, w_max)
+        updated_w = np.clip(temp_w, w_min, w_max)
+        updated_nw = np.clip(temp_nw, w_min, w_max)
+
+        #These values are added to the new weight_vector for the new t value
+        weight_vector = np.append(weight_vector, [updated_n, updated_w, updated_nw])
+    
+    #Otherwise, the central weight is calculated for previous bands
+    else: 
+
+        #The same base calculation is used - now with the interband user parameter
+        base = sign(prediction_error)*(2**(-(weight_exponent+interband)))
+
+        #band+2 is used as the index, since three values for north, west, and northwest weights are at the front of the vector
+        temp_z = weight_vector_prev[band+2] + np.floor((1/2)*(base*ld_vector[band+2] + 1))
+
+        #A new updated weight is calculated using equation 51
+        updated_z = np.clip(temp_z, w_min, w_max)
+
+        #This weight value is appended to the new weight vector
+        weight_vector = np.append(weight_vector, updated_z)
+    
+    return weight_vector
+        
+
 
 
 
