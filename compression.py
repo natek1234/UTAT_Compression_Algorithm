@@ -166,7 +166,7 @@ def weight_initialization(weight_vector):
     weight_one = (7/8)*(2**weight_resolution)
     weight_vector = np.append(weight_vector, weight_one)
 
-    for i in range(1, number_of_bands)
+    for i in range(1, number_of_bands):
     #The next bands, up until the final one used for prediction, are initialized using equation 33(b)
         w_length = len(weight_vector)
         weight_i = np.floor((1/8)*weight_vector[w_length-1])
