@@ -125,19 +125,19 @@ def local_sums(x,y,z,Nx, sample_rep):
 def local_diference_vector(x,y,z,sample_rep, local_sum, ld_vector):
     #if we're in the original band that the sample is 
     #When y == 0, the north, west, and northwest local differences are 0
-    print("Here")
+    
     if y == 0:
         ld_vector = np.append(ld_vector, [0,0,0])
         
     #When x ==0, the local differences all have the same calculation
     elif x == 0:
-        print("Here")
+        
         north_ld = 4*(sample_rep[x,y-1,z]) - local_sum
         ld_vector = np.append(ld_vector, [north_ld, north_ld, north_ld])
         
     #Otherwise, calculations from equations 25,26, and 27 are used
     else:
-        print("Here")
+        
         north_ld = 4*(sample_rep[x,y-1,z]) - local_sum
         west_ld = 4*(sample_rep[x-1,y,z]) - local_sum
         northwest_ld = 4*(sample_rep[x-1,y-1,z]) - local_sum
