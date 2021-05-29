@@ -11,19 +11,51 @@ blue books: https://public.ccsds.org/publications/bluebooks.aspx
 - back in November, we had c2, now they released c3
 '''
 
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
 import compression as comp
 
 import numpy as np
+import matplotlib.pyplot as plt
 import scipy.io         # loading .mat files
 # import matplotlib.pyplot as plt # visualization
 # import matplotlib.animation as animation
 
+
+# data is 3x3x3
+
+Nx, Ny, Nz = 3,3,3
+
+data_int = [[
+		[6, 4, 2],
+        [7, 8, 0],
+        [4, 8, 5]],
+
+       [[1, 2, 2],
+        [6, 1, 6],
+        [4, 6, 0]],
+
+       [[1, 9, 2],
+        [9, 5, 2],
+        [4, 1, 5]]]
+data_int = np.array(data_int)
+
+data_binary = [
+		[[0, 1, 0],
+        [1, 1, 0],
+        [1, 1, 1]],
+
+       [[0, 0, 0],
+        [1, 1, 0],
+        [0, 0, 0]],
+
+       [[1, 1, 0],
+        [0, 0, 1],
+        [1, 1, 1]]]
+data_binary = np.array(data_binary)
+
+
 def pictures():
 	# scripts for testing
-	indian_pines = scipy.io.loadmat("images/indian_pines.mat")
+	indian_pines = scipy.io.loadmat("images/Indian_pines.mat")
 
 	# scipy.io.loadmat() returns dictionary of data
 	print(indian_pines.keys())
@@ -54,23 +86,44 @@ def pictures():
 	plt.show()
 
 
+def load_pic():
+	data = scipy.io.loadmat("images/Indian_pines.mat")
+	data = data['indian_pines'] # data is dictionary, only take the array part
+
+	return data
+
+def show_data(data, title):
+	fig, axs = plt.subplots(2,2)
+	axs[0,0].imshow(data[0,:,:], cmap="binary")
+	axs[0,0].set_title(title + ": x slice 0")
+
+	axs[0,1].set_title(title + ": x slice 1")
+	axs[0,1].imshow(data[1,:,:], cmap="binary")
+
+	axs[1,0].set_title(title + ": x slice 2")
+	axs[1,0].imshow(data[2,:,:], cmap="binary")
+
+
+
 # ------------------ running ---------------------
-
-data = scipy.io.loadmat("images/indian_pines.mat")
-data = data['indian_pines'] # data is dictionary, only take the array part
-
-s_hat = None
-s_prev = None
-t,x,y,z = 0,0,0,0
-
-q = comp.quantizer(s_hat, data[x,y,z], t, z, s_prev)
-assert(q==0)
-
-t,x,y,z = 1,1,1,1
-q = comp.quantizer(s_hat, data[x,y,z], t, z, s_prev)
+fig_count = 1
+print("using data: \n", data_binary)
 
 
+local_vector = np.zeros([Nx,Ny,Nz])
 
-# pictures()
+# data is in (z,y,x) format
+
+for x in range (0,Nx):
+	for y in range (0,Ny):
+		for z in range (0,Nz):
+			local = comp.local_sums(x,y,z,Nx, data_binary)
+			print(x,y,z, " -> ", local)
+
+			local_vector[x,y,z] = local
 
 
+show_data(data_binary, "data_int")
+show_data(local_vector, "local")
+
+plt.show()

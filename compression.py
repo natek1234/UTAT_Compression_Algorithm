@@ -110,7 +110,7 @@ def local_sums(x,y,z,Nx, sample_rep):
             local_sum = 2*(sample_rep[x,y-1,z] + sample_rep[x+1,y-1,z])
 
         elif x == (Nx-1): #Last column of a band
-            local_sum = sample_rep[x-1,y,z] + sample_rep[x-1,y-1,z] + sample_rep[x,y-1,z]
+            local_sum = sample_rep[x-1,y,z] + sample_rep[x-1,y-1,z] + 2*sample_rep[x,y-1,z]
 
         else: # All other columns in the band
             local_sum = sample_rep[x-1,y,z] + sample_rep[x-1,y-1,z] + sample_rep[x,y-1,z] + sample_rep[x+1,y-1,z]
@@ -363,36 +363,12 @@ print("Here")
 #We need to write this encoded compressed image to a file -> need more research on this
 '''
 
+def test():
 
-# scripts for testing
-indian_pines = scipy.io.loadmat("images/indian_pines.mat")
+    # scripts for testing
+    indian_pines = scipy.io.loadmat("images/Indian_pines.mat")
 
-# scipy.io.loadmat() returns dictionary of data
-print(indian_pines.keys())
-data = indian_pines['indian_pines']
-
-# data is 145x145x220
-# first 2 axis is spatial, the last one (220) is spectral
-# pictures looks like a shitty top down satellite image of supposedly "indian pines"
-
-plt.figure(1)
-plt.imshow(data[:,:,len(data[0,0])//2]) # plot spatial data, and the middle spectral data
-plt.title("Middle of the spectrum")
-plt.xlabel("x")
-plt.ylabel("y")
-
-plt.figure(2)
-plt.imshow(data[:,:,len(data[0,0])-1]) # plot spatial data, and the middle spectral data
-plt.title("end of the spectrum")
-plt.xlabel("x")
-plt.ylabel("y")
-
-plt.figure(3)
-plt.imshow(data[:,:,0]) # plot spatial data, and the middle spectral data
-plt.title("start of the spectrum")
-plt.xlabel("x")
-plt.ylabel("y")
-
-plt.show()
-
-delta = predictor(data)
+    # scipy.io.loadmat() returns dictionary of data
+    print(indian_pines.keys())
+    data = indian_pines['indian_pines']
+    delta = predictor(data)
