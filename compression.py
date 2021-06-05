@@ -7,7 +7,8 @@ import numpy as np
 import scipy.io         # loading .mat files
 import matplotlib.pyplot as plt # visualization
 import matplotlib.animation as animation
-#Miscellaneous constants
+
+#User-defined constants for predictor 
 dynamic_range = 32 #user-specified parameter between 2 and 32
 s_min = -1*(2**(dynamic_range-1))
 s_max = 2**(dynamic_range-1)
@@ -26,6 +27,16 @@ interband = 1 #interband and intraband offsets are used in updating of weight va
 intraband = 1
 w_min = -(2**(weight_resolution+1)) #w_min and w_max values are used in weight updates (Equation 30)
 w_max = 2**(weight_resolution+2) - 1
+
+#User-defined constants for encoder
+output_word_size = 1 #measured in bytes - range one to eight
+u_max = 8 #unary length limit - ranges between 8 and 32
+initial_count_exp = 1 #initial count exponent used for adaptive statistics - ranges from 1 to 8
+accum_initial_constant = 0 #user specified parameter from 0 to min(D-2,14)
+if (accum_initial_constant>30-dynamic_range):
+    k_zprime = 2*accum_initial_constant + dynamic_range - 30
+else:
+    k_zprime = accum_initial_constant
 
 #Function required for weight update - not the same as numpy.sign so I had to quickly make it
 def sign(x):
@@ -287,7 +298,7 @@ def predictor(data):
             for y in range(0,Ny):
                 t = y*(Nx) + x
 
-                #Calculate local sums
+                #Calculate local sum at that pixel
                 local = local_sums(x, y, z, Nx, sample_rep)
 
 
@@ -325,9 +336,27 @@ def predictor(data):
     return predictions 
 
 #Encodes the delta values from the predictor
+#encoded image consists of a header followed by a body
+#   Header describes image and compression parameters for decompression
+#Two options for encoder: sample- adaptive and block-adaptive
 def encoder(delta):
-
+    Nz = delta.shape[2]
+    Ny = delta.shape[1]
+    Nx = delta.shape[0]
     encoded = []
+
+    initial_counter = 2**initial_count_exp
+    for z in range(0, Nz):
+        for x in range(0,Nx):
+            for y in range(0,Ny):
+                t = y*Nx + x
+
+                if t == 0:
+                    accum_value = np.floor((1/(2**7))*((3*(2**(k_zprime+6)))-49)*initial_counter)
+                
+
+        
+    
 
     return encoded 
 
