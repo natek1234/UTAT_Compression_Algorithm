@@ -13,8 +13,4 @@ def reverse_predictor():
 
 #Run the decoding algorithm
 def main():
-    None
-
-
-
-main() 
+    return 0
