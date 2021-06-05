@@ -272,13 +272,6 @@ def predictor(data):
     Ny = data.shape[1]
     Nz = data.shape[2]
     
-    
-    #Initialized predictor variables
-    s_hat = None
-    
-
-    
-
     #Stores all quantized values
     quantized = np.empty_like(data)
 
@@ -293,10 +286,6 @@ def predictor(data):
         for x in range(0,Nx):
             for y in range(0,Ny):
                 t = y*(Nx) + x
-                
-                
-                
-                
 
                 #Calculate local sums
                 local = local_sums(x, y, z, Nx, sample_rep)
@@ -307,36 +296,32 @@ def predictor(data):
                 #Calculate the local difference vector
                 ld_vector = local_diference_vector(x, y, z, sample_rep, local, ld_vector)
                 
-                
-
-                #Initialize the weight vector
+                #Initialize the weight vector if we're in the first pixel of a band
                 if t == 0:
                     weight_vector_new = np.empty(0)
                     weight_vector_new = weight_initialization(weight_vector_new)
                 
-                #Update the weight vector if t is not 0
-                
-                
-                #Calculate the predicted sample value, and other needed values
-                s_hat, s_z, dr_samp = prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
+                #Calculate the predicted sample value, and other needed values (high resolution and double resolution predicted sample values)
+                s_hat, hr_samp, dr_samp = prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
 
-                #Assign the weight vector to be the previous one, and make the new one empty
-                w_prev = weight_vector_new
-                weight_vector_new = np.empty(0)
-
+                #quantize the predicted sample value
                 q = quantizer(s_hat, data[x,y,z], t, z)
                 quantized[x,y,z] = q
 
-                #Calculate the sample rep value for that band
-                sample_rep[x,y,z], clipped_quantizer = sample_rep_value(t, data[x,y,z], s_hat, q, s_z)
+                #Calculate the sample rep value for that pixel
+                sample_rep[x,y,z], clipped_quantizer = sample_rep_value(t, data[x,y,z], s_hat, q, hr_samp)
 
-                #Update the weight vector for the next pixel
-                weight_vector_new = weight_update(clipped_quantizer, dr_samp, t, Nx, w_prev, weight_vector_new, ld_vector)
+                #Map the quantized values for the final prediction
+                mapped = mapper(s_hat, q, t, dr_samp)
 
-                mapped = mapper(s_hat, q, t, s_z)
-
-                #Set s_prev before
+                #Add the final prediction to the storing variable to return
                 predictions[x,y,z] = mapped
+
+                #Assign the weight vector to be the previous one, and update the new one for the next pixel
+                w_prev = weight_vector_new
+                weight_vector_new = np.empty(0)
+                weight_vector_new = weight_update(clipped_quantizer, dr_samp, t, Nx, w_prev, weight_vector_new, ld_vector)
+      
     return predictions 
 
 #Encodes the delta values from the predictor
