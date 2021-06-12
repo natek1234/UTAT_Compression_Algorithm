@@ -1,0 +1,109 @@
+<project name="EMPORDA" default="compile" basedir=".">
+	<property name="name" value="emporda" description="Project name."/>
+	<property name="src" value="src" description="The sources of the project."/>
+	<property name="build" value="build" description="The build files (.class) of the project."/>
+	<property name="dist"  value="dist" description="The final file (.jar) of the project."/>
+	<property name="docs"  value="docs" description="The API documentation."/>
+	<property name="workDir"  value="workDir" description="The work directory of the project."/>
+    <property name="GiciLibsPath" value="src/GiciLibs/" description="Path where the GiciLibs are."/>
+
+
+    <!-- =================================================================== -->
+    <!-- Help on usage                                                       -->
+    <!-- =================================================================== -->
+    <target name="usage">
+      <echo message=""/>
+      <echo message=""/>
+      <echo message="${name} ${version} Build file"/>
+      <echo message="-------------------------------------------------------------"/>
+      <echo message=""/>
+      <echo message=" available targets are:"/>
+      <echo message=""/>
+      <!--echo message="   package  > generates the ${name}.jar file"/-->
+      <echo message="   compile  --> compiles the source code (default)"/>
+      <echo message="   javadoc  --> generates the API documentation"/>
+      <echo message="   clean    --> cleans up the directory"/>
+      <echo message=""/>
+      <echo message=" See the comments inside the build.xml file for more details."/>
+      <echo message="-------------------------------------------------------------"/>
+      <echo message=""/>
+      <echo message=""/>
+    </target>
+    
+
+    
+    <!-- =================================================================== -->
+    <!-- Compile                                                             -->
+    <!-- =================================================================== -->
+    <target name="compile" description="Compile the project. 
+        The class files are saved in build directory and the .jar file in dist directory.">
+		<delete file="${dist}/${name}.jar"/>
+		<copy todir="${build}">
+			<fileset dir ="${src}" defaultexcludes="yes">
+                <include name="Gici*/**.java" />
+                <include name="GiciEntropyCoder/**.java" />
+                <include name="GiciEntropyCoder/EntropySampleCoder/**.java"/>
+                <include name="emporda/**.java" />
+                <exclude name="GiciEntropyCoder/ArithmeticCoder/*" />
+                <exclude name="GiciEntropyCoder/RangeCoder/*" />
+                <exclude name="**/jUnits/*" />
+			</fileset>
+		</copy>
+
+        <javac srcdir="${src}" destdir="${build}" nowarn="off" 
+            optimize="on" deprecation="on" debug="on" includeAntRuntime="yes" encoding="UTF-8">
+                     <src path="${src}"/>
+                     <src path="${GiciLibsPath}"/>
+                     <exclude name="GiciEntropyCoder/ArithmeticCoder/*" />
+                     <exclude name="GiciEntropyCoder/RangeCoder/*" />
+                     <exclude name="**/jUnits/*" /> 
+	</javac>
+	
+	
+		<jar destfile="${dist}/${name}.jar" basedir="${build}"
+			manifest="${src}/MANIFEST.MF" />
+	</target>
+	
+
+	<target name="doc" description="Generate the API documentation for the project.">
+		<delete dir="${docs}/api"/>
+		<mkdir dir="${docs}/api"/>
+		<javadoc destdir="${docs}/api" author="true" access="private" windowtitle="Draft API">
+			<fileset dir="${src}" defaultexcludes="yes">
+				<include name="draft/**.java" />
+				<exclude name="draft/junit/**" />
+			</fileset>
+			<doctitle>
+				<![CDATA[<h1>Draft API (GICI)</h1>]]>
+			</doctitle>
+			<bottom>
+				<![CDATA[
+					<i>EMPORDA - Copyright (C) 2011</i><br>
+					This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.<br>
+					This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the <a href="http://www.gnu.org/licenses/gpl.html">GNU General Public License</a> for more details.<br><br>
+					<a href="http://www.gici.uab.es">Group on Interactive Coding of Images (GICI)</a> (<a href="mailto:gici-info@abra.uab.es">contact</a>)
+				]]>
+			</bottom>
+		</javadoc>
+	</target>
+
+	<target name="clean">
+	
+		<delete includeemptydirs="true">
+			<fileset dir="${build}" includes="**/*" />
+			<fileset dir="${build}" includes="*" />
+		</delete>
+		
+
+
+		<delete includeemptydirs="true">
+			<fileset dir="${dist}" includes="*" />
+			<fileset dir="${dist}" includes="**/*" />
+		</delete>
+		
+				
+
+		<delete dir="${docs}" includes="*.*"/>
+		
+	</target>
+</project>
