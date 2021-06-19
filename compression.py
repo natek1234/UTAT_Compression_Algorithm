@@ -28,11 +28,12 @@ intraband = 1
 w_min = -(2**(weight_resolution+1)) #w_min and w_max values are used in weight updates (Equation 30)
 w_max = 2**(weight_resolution+2) - 1
 
-#User-defined constants for encoder
+#User-defined constants for encoder - in this implementation band sequential order was used, this changes the order pixels are inputted
 output_word_size = 1 #measured in bytes - range one to eight
 u_max = 8 #unary length limit - ranges between 8 and 32
 initial_count_exp = 1 #initial count exponent used for adaptive statistics - ranges from 1 to 8
 accum_initial_constant = 0 #user specified parameter from 0 to min(D-2,14)
+gamma = 5 # used to rescale the counter - a value from 4 to 11
 if (accum_initial_constant>30-dynamic_range):
     k_zprime = 2*accum_initial_constant + dynamic_range - 30
 else:
@@ -345,14 +346,27 @@ def encoder(delta):
     Nx = delta.shape[0]
     encoded = []
 
-    initial_counter = 2**initial_count_exp
+    
     for z in range(0, Nz):
-        for x in range(0,Nx):
-            for y in range(0,Ny):
+        counter = 2**initial_count_exp
+        accum_value = np.floor((1/(2**7))*((3*(2**(k_zprime+6)))-49)*counter) #Equation 58
+        for y in range(0,Ny):
+            for x in range(0,Nx):
                 t = y*Nx + x
+                
+                
+                
+                #Update counter and accumulator values
+                if (t>1):
+                    if (counter< 2**gamma - 1):
+                        accum_value = accum_value + delta[x,y,z]
+                        counter = counter + 1
+                    if (counter == 2**gamma - 1):
+                        accum_value = np.floor((accum_value + delta[x,y,z] +1)/2)
+                        counter = np.floor((counter+1)/2)
 
-                if t == 0:
-                    accum_value = np.floor((1/(2**7))*((3*(2**(k_zprime+6)))-49)*initial_counter)
+                       
+                    
                 
 
         
@@ -386,3 +400,4 @@ def test():
     print(indian_pines.keys())
     data = indian_pines['indian_pines']
     delta = predictor(data)
+
