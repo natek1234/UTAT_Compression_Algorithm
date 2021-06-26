@@ -339,24 +339,52 @@ def predictor(data):
 #Encodes the delta values from the predictor
 #encoded image consists of a header followed by a body
 #   Header describes image and compression parameters for decompression
-#Two options for encoder: sample- adaptive and block-adaptive
+#Two options for encoder: sample- adaptive and block-adaptive: this approach uses sample-adaptive encoding
 def encoder(delta):
     Nz = delta.shape[2]
     Ny = delta.shape[1]
     Nx = delta.shape[0]
-    encoded = []
+    encoded = np.empty_like(delta)
 
     
     for z in range(0, Nz):
+
+        #Set initial counter and accumulator values for the band 
         counter = 2**initial_count_exp
         accum_value = np.floor((1/(2**7))*((3*(2**(k_zprime+6)))-49)*counter) #Equation 58
         for y in range(0,Ny):
             for x in range(0,Nx):
                 t = y*Nx + x
-                
-                
-                
-                #Update counter and accumulator values
+
+                #At the first pixel, the endoced value is just the D-bit representation of delta
+                if (t==0):
+                    encoded[x,y,z] = bin(delta[x,y,z])
+
+                else:
+                    #Using the adaptive code statistics, set the code parameter, according to equation 62 in section 5.4.3.2.4
+                    if (2*counter>accum_value+np.floor((49/(2**7))*counter)):
+                        code_param = 0
+                    else:
+                        for i in range(0, dynamic_range):
+                            if (counter*(2**i)<= accum_value+np.floor((49/(2**7))*counter)):
+                                code_param = i
+                    
+                    #Use golomb power of two code words to write a binary codeword, based on the user-defined unary length limit
+                    if (np.floor(delta[x,y,z]/(2**code_param))<u_max):
+                        bin_num = bin(delta[x,y,z])
+                        lsb = bin_num[-code_param:] # takes the n number of least significant bits of the binary representation
+                        zeros = "1"
+                        zeros = zeros.zfill(np.floor(delta[x,y,z]/(2**code_param)))# zfill pads the string with the required amount of zeros at the beginning
+                        encoded[x,y,z] = "0b" + zeros + lsb
+                    
+                    else:
+                        bin_num = bin(delta[x,y,z])
+                        bin_num = bin_num[2:]
+                        zeros = ""
+                        zeros = zeros.zfill(u_max)
+                        encoded[x,y,z] = "0b" + zeros + bin_num
+            
+                #Update counter and accumulator values after each pixel, according to section 5.4.3.2.3
                 if (t>1):
                     if (counter< 2**gamma - 1):
                         accum_value = accum_value + delta[x,y,z]
@@ -364,13 +392,6 @@ def encoder(delta):
                     if (counter == 2**gamma - 1):
                         accum_value = np.floor((accum_value + delta[x,y,z] +1)/2)
                         counter = np.floor((counter+1)/2)
-
-                       
-                    
-                
-
-        
-    
 
     return encoded 
 
