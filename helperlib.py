@@ -17,6 +17,3 @@ def bin_to_dec(b):
     d = int("".join(str(x) for x in b), 2)
 
     return d
-
-x =6
-print(x)
