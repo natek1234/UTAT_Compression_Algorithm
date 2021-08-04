@@ -7,6 +7,7 @@ import numpy as np
 import scipy.io         # loading .mat files
 import matplotlib.pyplot as plt # visualization
 import matplotlib.animation as animation
+import helperlib
 
 #User-defined constants for predictor 
 dynamic_range = 32 #user-specified parameter between 2 and 32
@@ -38,13 +39,6 @@ if (accum_initial_constant>30-dynamic_range):
     k_zprime = 2*accum_initial_constant + dynamic_range - 30
 else:
     k_zprime = accum_initial_constant
-
-#Function required for weight update - not the same as numpy.sign so I had to quickly make it
-def sign(x):
-    if x >= 0:
-        return 1
-    else:
-        return -1
 
 #This mapper will take the quantized values and map them to unsigned integers
 def mapper(s_hat, q, t, s_z):
@@ -242,7 +236,7 @@ def weight_update(clipped_quant, dr_sample_value, t, Nx, weight_vector_prev, wei
     
 
     #The base calculation is used for all three values - Equations 52-54
-    base = sign(prediction_error)*(2**(-(weight_exponent+intraband)))
+    base = helperlib.sign(prediction_error)*(2**(-(weight_exponent+intraband)))
     
 
     #The temporary north, west, and northwest values are calculated using the previous weight vector
@@ -261,7 +255,7 @@ def weight_update(clipped_quant, dr_sample_value, t, Nx, weight_vector_prev, wei
     for i in range(1, number_of_bands+1):
 
         #The same base calculation is used - now with the interband user parameter
-        base_two = sign(prediction_error)*(2**(-(weight_exponent+interband)))
+        base_two = helperlib.sign(prediction_error)*(2**(-(weight_exponent+interband)))
 
         #band+2 is used as the index, since three values for north, west, and northwest weights are at the front of the vector
         temp_z = weight_vector_prev[i+2] + np.floor((1/2)*(base_two*ld_vector[i+2] + 1))
@@ -344,11 +338,10 @@ def encoder(delta):
     Nz = delta.shape[2]
     Ny = delta.shape[1]
     Nx = delta.shape[0]
-    encoded = np.empty_like(delta)
+    encoded = []
 
     
     for z in range(0, Nz):
-
         #Set initial counter and accumulator values for the band 
         counter = 2**initial_count_exp
         accum_value = np.floor((1/(2**7))*((3*(2**(k_zprime+6)))-49)*counter) #Equation 58
@@ -358,41 +351,52 @@ def encoder(delta):
 
                 #At the first pixel, the endoced value is just the D-bit representation of delta
                 if (t==0):
-                    encoded[x,y,z] = bin(delta[x,y,z])
+                    code = helperlib.dec_to_bin(delta[x,y,z], dynamic_range)
+                    encoded.append(code)
 
                 else:
                     #Using the adaptive code statistics, set the code parameter, according to equation 62 in section 5.4.3.2.4
                     if (2*counter>accum_value+np.floor((49/(2**7))*counter)):
                         code_param = 0
                     else:
-                        for i in range(0, dynamic_range):
+                        for i in range(dynamic_range, 0, -1):
                             if (counter*(2**i)<= accum_value+np.floor((49/(2**7))*counter)):
                                 code_param = i
+                                break
                     
                     #Use golomb power of two code words to write a binary codeword, based on the user-defined unary length limit
                     if (np.floor(delta[x,y,z]/(2**code_param))<u_max):
-                        bin_num = bin(delta[x,y,z])
-                        lsb = bin_num[-code_param:] # takes the n number of least significant bits of the binary representation
-                        zeros = "1"
-                        zeros = zeros.zfill(np.floor(delta[x,y,z]/(2**code_param)))# zfill pads the string with the required amount of zeros at the beginning
-                        encoded[x,y,z] = "0b" + zeros + lsb
-                    
+
+                        #Write unary code
+                        u = [1] * np.floor(delta[x,y,z]/(2**code_param))
+                        u.append(0)
+
+                        #Write remainder code
+                        r = helperlib.dec_to_bin(delta[x,y,z], code_param)
+                        
+                        encoded += u + r
+                        
                     else:
-                        bin_num = bin(delta[x,y,z])
-                        bin_num = bin_num[2:]
-                        zeros = ""
-                        zeros = zeros.zfill(u_max)
-                        encoded[x,y,z] = "0b" + zeros + bin_num
+                        
+                        #Unary code
+                        u = [1] * u_max
+                        u.append(0)
+                        
+                        #Remainder code
+                        r = helperlib.dec_to_bin(delta[x,y,z], dynamic_range)
+
+                        encoded += u + r
             
                 #Update counter and accumulator values after each pixel, according to section 5.4.3.2.3
                 if (t>1):
                     if (counter< 2**gamma - 1):
                         accum_value = accum_value + delta[x,y,z]
                         counter = counter + 1
-                    if (counter == 2**gamma - 1):
+                    elif (counter == 2**gamma - 1):
                         accum_value = np.floor((accum_value + delta[x,y,z] +1)/2)
                         counter = np.floor((counter+1)/2)
 
+    encoded = np.array(encoded)
     return encoded 
 
 
