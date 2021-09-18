@@ -1,7 +1,6 @@
 #Purpose: losslessly (or near losslessly) compress an image using the CCSDS123 standard
-
-# install pip
-# then 'pip install scipy' get it
+#In this branch, quantizer and sample representative functions were removed in order to achieve completely lossless compression
+#Each appearance of quantized values are replaced with the predicted residual
 
 import numpy as np
 import scipy.io         # loading .mat files
@@ -40,86 +39,40 @@ if (accum_initial_constant>30-dynamic_range):
 else:
     k_zprime = accum_initial_constant
 
-#This mapper will take the quantized values and map them to unsigned integers
-def mapper(s_hat, q, t, s_z):
+#This mapper will take the predicted residuals and map them to unsigned integers
+def mapper(predicted_sample, predicted_residual, t, dr_samp):
 
     #Calculate theta (equation 56)
     if t == 0:
-        theta = min(s_hat - s_min, s_max - s_hat)
+        theta = min(predicted_sample - s_min, s_max - predicted_sample)
     else:
-        theta = min(np.floor((s_hat - s_min + max_error)/(2*max_error + 1)) , np.floor((s_max - s_hat + max_error)/(2*max_error + 1)))
+        theta = min(np.floor((predicted_sample - s_min + max_error)/(2*max_error + 1)) , np.floor((s_max - predicted_sample + max_error)/(2*max_error + 1)))
     
     #Use theta to calculate Delta - the mapped quantizer index (equation 55)
-    if abs(q)>theta:
-        return abs(q) + theta
-    elif 0 <= ((-1)**s_z)*q and ((-1)**s_z)*q <= theta:
-        return 2*abs(q)
+    if abs(predicted_residual)>theta:
+        return abs(predicted_residual) + theta
+    elif 0 <= ((-1)**dr_samp)*predicted_residual and ((-1)**dr_samp)*predicted_residual <= theta:
+        return 2*abs(predicted_residual)
     else:
-        return 2*abs(q) - 1
-
-#Takes a sample and sample prediction and outputs a quantized value for the difference between the two
-#Note: s_prev refers to s_z-1 (0), or the very first entry in the previous spectral band
-def quantizer(s_hat,s, t, z):
-
-    #First sample value for the first band
-    if t == 0 and z == 0:
-        return s_mid
-    #First sample value for every other band
-    if t == 0 and z > 0:
-        return s - s_hat
-    #For all t>0
-    else:
-        #Compute delta (residual)
-        delta = s - s_hat
-        #Return quantized delta
-        return np.sign(delta)*np.floor((abs(delta) + max_error)/(2*max_error + 1))
-
-#Calculates sample representative values for a given index, which are needed to calcuulate the next local sum in the image
-def sample_rep_value(t, data, predicted_sample, quantized, hr_pred_sample_value):  
-
-    #The quantizer value is clipped using equation 48
-    clipped_quant = np.clip(predicted_sample + (quantized*(2*max_error+1)), s_min, s_max) 
-
-    #If in the first sample in a band, the sample representative is equal to the data value
-    if t == 0:
-        sample_rep = data
-
-    #Otherwise, calculations are made according to page 4-12
-    else:
-        #The double-resolution sample value is calculated next (Equation 47). Each section is a part of the complete equation
-        section_one =  4*((2**resolution)-damping) 
-
-        #Section 2 includes the clipped quantizer value and the sign of the original quantizer value
-        section_two =  (clipped_quant*(2**weight_resolution)) - ((np.sign(quantized))*max_error*offset*(2**(weight_resolution - resolution)))
-
-        #Section 3 includes the high-resolution predicted sample value calculated in section 4.7.2
-        section_three = (damping*(hr_pred_sample_value)) - (damping*(2**(weight_resolution+1)))
-
-        #The final double-resolution sample value:
-        dr_sample_rep = np.floor((section_one*section_two + section_three)/(2**(resolution+weight_resolution+1)))
-
-        #The sample rep value is calculated using the dr_sample_rep(Equation 46)
-        sample_rep = np.floor((dr_sample_rep+1)/2)
-    
-    return sample_rep, clipped_quant
+        return 2*abs(predicted_residual) - 1
 
 #Calculates a local sum for a pixel - note, value when x = 0 and y = 0 is not calculated, as it is not needed for prediction.
 #Calculations are made using wide neighbor-oriented local sums specification (Equation 20 page 4-4)
-def local_sums(x,y,z,Nx, sample_rep):
+def local_sums(x,y,z,Nx, data):
     
     # Calculation for the first row of a band
     if y==0 and x>0:
-        local_sum = 4*(sample_rep[x-1,y,z])
+        local_sum = 4*(data[x-1,y,z])
 
     elif y>0:
         if x==0: #First column of a band
-            local_sum = 2*(sample_rep[x,y-1,z] + sample_rep[x+1,y-1,z])
+            local_sum = 2*(data[x,y-1,z] + data[x+1,y-1,z])
 
         elif x == (Nx-1): #Last column of a band
-            local_sum = sample_rep[x-1,y,z] + sample_rep[x-1,y-1,z] + 2*sample_rep[x,y-1,z]
+            local_sum = data[x-1,y,z] + data[x-1,y-1,z] + 2*data[x,y-1,z]
 
         else: # All other columns in the band
-            local_sum = sample_rep[x-1,y,z] + sample_rep[x-1,y-1,z] + sample_rep[x,y-1,z] + sample_rep[x+1,y-1,z]
+            local_sum = data[x-1,y,z] + data[x-1,y-1,z] + data[x,y-1,z] + data[x+1,y-1,z]
 
     elif y==0 and x ==0:
         local_sum = 0
@@ -129,7 +82,7 @@ def local_sums(x,y,z,Nx, sample_rep):
 #Adds to the local difference vector, which is the difference between 4 times the sample representative value and the local sum
 #Described on pages 4-5 to 4-6 of standard - note, a t value of 0 is not passed into the function (not needed)
 #When this function is called, we will run a for loop for each band up to the number_of_bands constant
-def local_diference_vector(x,y,z,sample_rep, local_sum, ld_vector):
+def local_diference_vector(x,y,z,data, local_sum, ld_vector):
     #if we're in the original band that the sample is 
     #When y == 0, the north, west, and northwest local differences are 0
     
@@ -139,15 +92,15 @@ def local_diference_vector(x,y,z,sample_rep, local_sum, ld_vector):
     #When x ==0, the local differences all have the same calculation
     elif x == 0:
         
-        north_ld = 4*(sample_rep[x,y-1,z]) - local_sum
+        north_ld = 4*(data[x,y-1,z]) - local_sum
         ld_vector = np.append(ld_vector, [north_ld, north_ld, north_ld])
         
     #Otherwise, calculations from equations 25,26, and 27 are used
     else:
         
-        north_ld = 4*(sample_rep[x,y-1,z]) - local_sum
-        west_ld = 4*(sample_rep[x-1,y,z]) - local_sum
-        northwest_ld = 4*(sample_rep[x-1,y-1,z]) - local_sum
+        north_ld = 4*(data[x,y-1,z]) - local_sum
+        west_ld = 4*(data[x-1,y,z]) - local_sum
+        northwest_ld = 4*(data[x-1,y-1,z]) - local_sum
         ld_vector = np.append(ld_vector, [north_ld, west_ld, northwest_ld])
 
     #If we're not in the original band (meaning we're in one of the previous bands used for prediction), 
@@ -155,7 +108,7 @@ def local_diference_vector(x,y,z,sample_rep, local_sum, ld_vector):
     for i in range(1,number_of_bands+1):
         
         #Equation 24
-        central_ld = 4*(sample_rep[x,y,z-i]) - local_sum
+        central_ld = 4*(data[x,y,z-i]) - local_sum
         
         #Append the value to the local difference vector
         ld_vector = np.append(ld_vector, central_ld)
@@ -219,13 +172,18 @@ def prediction_calculation(ld_vector, weight_vector, local_sum, t, x, y, z, data
     #Lastly, the predicted sample value is half the dr_sample_value - equation 39
     pred_sample_value = dr_sample_value/2
 
-    #Both the predicted and hr predicted sample value are returned - latter is used in sample rep calculation
-    return pred_sample_value, hr_pred_sample_value, dr_sample_value
+    #The difference between the actual value and the predicted value is calculated
+    pred_residual = data[x,y,z] - pred_sample_value
+
+    #Both the predicted and dr predicted sample value are returned - latter is used in updating the weight vector
+    return pred_sample_value, pred_residual, dr_sample_value
 
 
-def weight_update(clipped_quant, dr_sample_value, t, Nx, weight_vector_prev, weight_vector, ld_vector):
+def weight_update(dr_sample_value, predicted_sample, predicted_residual, t, Nx, weight_vector_prev, weight_vector, ld_vector):
 
-    #Prediction error is calculated using equation 49s
+    clipped_quant = np.clip(predicted_sample + (predicted_residual*(2*max_error+1)), s_min, s_max)
+
+    #Prediction error is calculated using equation 49
     prediction_error = 2*clipped_quant - dr_sample_value
     
 
@@ -278,57 +236,43 @@ def predictor(data):
     Ny = data.shape[1]
     Nz = data.shape[2]
     
-    #Stores all quantized values
-    quantized = np.empty_like(data)
 
     #stores all predictions
     predictions = np.empty_like(data)
 
-    #stores sample representative values
-    sample_rep = np.empty_like(data)
-
     for z in range(0,Nz):
-        print(z)
         for x in range(0,Nx):
             for y in range(0,Ny):
                 t = y*(Nx) + x
 
                 #Calculate local sum at that pixel
-                local = local_sums(x, y, z, Nx, sample_rep)
-
+                local = local_sums(x, y, z, Nx, data)
 
                 ld_vector = np.empty(0)
 
                 #Calculate the local difference vector
-                ld_vector = local_diference_vector(x, y, z, sample_rep, local, ld_vector)
+                ld_vector = local_diference_vector(x, y, z, data, local, ld_vector)
                 
                 #Initialize the weight vector if we're in the first pixel of a band
                 if t == 0:
                     weight_vector_new = np.empty(0)
                     weight_vector_new = weight_initialization(weight_vector_new)
                 
-                #Calculate the predicted sample value, and other needed values (high resolution and double resolution predicted sample values)
-                s_hat, hr_samp, dr_samp = prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
+                #Calculate the predicted residual, and other needed values (high resolution and double resolution predicted sample values)
+                predicted_sample, predicted_residual, dr_samp = prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
 
-                #quantize the predicted sample value
-                q = quantizer(s_hat, data[x,y,z], t, z)
-                quantized[x,y,z] = q
+                #Map the predicted residual for the final prediction and store it in the return array
+                predictions[x,y,z] = mapper(predicted_sample, predicted_residual, t, dr_samp)
 
-                #Calculate the sample rep value for that pixel
-                sample_rep[x,y,z], clipped_quantizer = sample_rep_value(t, data[x,y,z], s_hat, q, hr_samp)
-
-                #Map the quantized values for the final prediction
-                mapped = mapper(s_hat, q, t, dr_samp)
-
-                #Add the final prediction to the storing variable to return
-                predictions[x,y,z] = mapped
-
+        
                 #Assign the weight vector to be the previous one, and update the new one for the next pixel
                 w_prev = weight_vector_new
                 weight_vector_new = np.empty(0)
-                weight_vector_new = weight_update(clipped_quantizer, dr_samp, t, Nx, w_prev, weight_vector_new, ld_vector)
+                weight_vector_new = weight_update(dr_samp, predicted_sample, predicted_residual, t, Nx, w_prev, weight_vector_new, ld_vector)
       
     return predictions 
+
+
 
 #Encodes the delta values from the predictor
 #encoded image consists of a header followed by a body
