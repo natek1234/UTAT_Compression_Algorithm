@@ -18,7 +18,7 @@ resolution = 4 # Can be any integer value from  0 to 4
 damping = 0 #Any integer value from 0 to 2^resolution - 1
 offset = 0 #any integer value from 0 to 2^resolution -1
 max_error = 0 #Max error is an array for each pixel in the image, but for now is used as a single variable
-number_of_bands = 9 #user-defined parameter between 0 and 15 that indicates that number of previous bands used for prediction
+number_of_bands = 2 #user-defined parameter between 0 and 15 that indicates that number of previous bands used for prediction
 register_size = 50 #user-defined parameter from max{32, 2^(D+weight_resolution+1)} to 64
 v_min = -6 #vmin and vmax are user-defined parameters that control the rate at which the algorithm adapts to data statistics
 v_max = 9 # -6 <= v_min < v_max <= 9

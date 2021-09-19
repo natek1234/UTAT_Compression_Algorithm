@@ -109,5 +109,17 @@ def local_sums_visualize():
 
 	plt.show()
 
+def diff_vector_visualize():
+	for x in range(0,Nx):
+		for y in range(0,Ny):
+			for z in range(0,Nz):
+				ld_vector = np.empty(0)
+				local = comp.local_sums(x,y,z,Nx,data)
+				ld_vector = comp.local_diference_vector(x,y,z,data,local,ld_vector)
+
+				print(x,y,z, "->", ld_vector)
+
+				
 
 local_sums_visualize()
+diff_vector_visualize()
