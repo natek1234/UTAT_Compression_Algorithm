@@ -24,7 +24,7 @@ import scipy.io         # loading .mat files
 
 Nx, Ny, Nz = 3,3,3
 
-data_int = [[
+data = [[
 		[6, 4, 2],
         [7, 8, 0],
         [4, 8, 5]],
@@ -36,21 +36,8 @@ data_int = [[
        [[1, 9, 2],
         [9, 5, 2],
         [4, 1, 5]]]
-data_int = np.array(data_int)
+data = np.array(data)
 
-data_binary = [
-		[[0, 1, 0],
-        [1, 1, 0],
-        [1, 1, 1]],
-
-       [[0, 0, 0],
-        [1, 1, 0],
-        [0, 0, 0]],
-
-       [[1, 1, 0],
-        [0, 0, 1],
-        [1, 1, 1]]]
-data_binary = np.array(data_binary)
 
 
 def pictures():
@@ -105,25 +92,22 @@ def show_data(data, title):
 
 
 
-# ------------------ running ---------------------
-fig_count = 1
-print("using data: \n", data_binary)
+def local_sums_visualize():
+	local_vector = np.zeros([Nx,Ny,Nz])
+
+	for x in range (0,Nx):
+		for y in range (0,Ny):
+			for z in range (0,Nz):
+				local = comp.local_sums(x,y,z,Nx, data)
+				print(x,y,z, " -> ", local)
+
+				local_vector[x,y,z] = local
 
 
-local_vector = np.zeros([Nx,Ny,Nz])
+	show_data(data, "data")
+	show_data(local_vector, "local")
 
-# data is in (z,y,x) format
-
-for x in range (0,Nx):
-	for y in range (0,Ny):
-		for z in range (0,Nz):
-			local = comp.local_sums(x,y,z,Nx, data_binary)
-			print(x,y,z, " -> ", local)
-
-			local_vector[x,y,z] = local
+	plt.show()
 
 
-show_data(data_binary, "data_int")
-show_data(local_vector, "local")
-
-plt.show()
+local_sums_visualize()
