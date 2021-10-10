@@ -91,35 +91,45 @@ def show_data(data, title):
 	axs[1,0].imshow(data[2,:,:], cmap="binary")
 
 
-
+#In CCSDS, y defines the row and x defines the column
 def local_sums_visualize():
-	local_vector = np.zeros([Nx,Ny,Nz])
-
-	for x in range (0,Nx):
+	local_vector = np.zeros([Nz,Ny,Nx])
+	print("Local Sums:")
+	for z in range (0,Nz):
 		for y in range (0,Ny):
-			for z in range (0,Nz):
+			for x in range (0,Nx):
 				local = comp.local_sums(x,y,z,Nx, data)
 				print(x,y,z, " -> ", local)
 
-				local_vector[x,y,z] = local
+				local_vector[z,y,x] = local
+				
 
 
 	show_data(data, "data")
 	show_data(local_vector, "local")
-
+	
 	plt.show()
 
 def diff_vector_visualize():
-	for x in range(0,Nx):
+	print("Local Difference Vectors:")
+	diff_vector = np.zeros([Nz,Ny,Nx])
+	for z in range(0,Nz):
 		for y in range(0,Ny):
-			for z in range(0,Nz):
+			for x in range(0,Nx):
 				ld_vector = np.empty(0)
 				local = comp.local_sums(x,y,z,Nx,data)
-				ld_vector = comp.local_diference_vector(x,y,z,data,local,ld_vector)
+				ld_vector = comp.local_diference_vector(x,y,z,data,local,ld_vector, Nz)
 
 				print(x,y,z, "->", ld_vector)
+				diff_vector[z,y,x] = np.linalg.norm(ld_vector)
+	
+	show_data(diff_vector, "local difference")
+	plt.show()
+	
 
-				
+
+		
 
 local_sums_visualize()
 diff_vector_visualize()
+
