@@ -62,17 +62,17 @@ def local_sums(x,y,z,Nx, data):
     
     # Calculation for the first row of a band
     if y==0 and x>0:
-        local_sum = 4*(data[x-1,y,z])
+        local_sum = 4*(data[z,y,x-1])
 
     elif y>0:
         if x==0: #First column of a band
-            local_sum = 2*(data[x,y-1,z] + data[x+1,y-1,z])
+            local_sum = 2*(data[z,y-1,x] + data[z,y-1,x+1])
 
         elif x == (Nx-1): #Last column of a band
-            local_sum = data[x-1,y,z] + data[x-1,y-1,z] + 2*data[x,y-1,z]
+            local_sum = data[z,y,x-1] + data[z,y-1,x-1] + 2*data[z,y-1,x]
 
         else: # All other columns in the band
-            local_sum = data[x-1,y,z] + data[x-1,y-1,z] + data[x,y-1,z] + data[x+1,y-1,z]
+            local_sum = data[z,y,x-1] + data[z,y-1,x-1] + data[z,y-1,x] + data[z,y-1,x+1]
 
     elif y==0 and x ==0:
         local_sum = 0
@@ -82,7 +82,7 @@ def local_sums(x,y,z,Nx, data):
 #Adds to the local difference vector, which is the difference between 4 times the sample representative value and the local sum
 #Described on pages 4-5 to 4-6 of standard - note, a t value of 0 is not passed into the function (not needed)
 #When this function is called, we will run a for loop for each band up to the number_of_bands constant
-def local_diference_vector(x,y,z,data, local_sum, ld_vector):
+def local_diference_vector(x,y,z,data, local_sum, ld_vector, Nz):
     #if we're in the original band that the sample is 
     #When y == 0, the north, west, and northwest local differences are 0
     
@@ -92,27 +92,30 @@ def local_diference_vector(x,y,z,data, local_sum, ld_vector):
     #When x ==0, the local differences all have the same calculation
     elif x == 0:
         
-        north_ld = 4*(data[x,y-1,z]) - local_sum
+        north_ld = 4*(data[z,y-1,x]) - local_sum
         ld_vector = np.append(ld_vector, [north_ld, north_ld, north_ld])
         
     #Otherwise, calculations from equations 25,26, and 27 are used
     else:
         
-        north_ld = 4*(data[x,y-1,z]) - local_sum
-        west_ld = 4*(data[x-1,y,z]) - local_sum
-        northwest_ld = 4*(data[x-1,y-1,z]) - local_sum
+        north_ld = 4*(data[z,y-1,x]) - local_sum
+        west_ld = 4*(data[z,y,x-1]) - local_sum
+        northwest_ld = 4*(data[z,y-1,x-1]) - local_sum
         ld_vector = np.append(ld_vector, [north_ld, west_ld, northwest_ld])
 
     #If we're not in the original band (meaning we're in one of the previous bands used for prediction), 
     #only calculate central local difference
     for i in range(1,number_of_bands+1):
         
-        #Equation 24
-        central_ld = 4*(data[x,y,z-i]) - local_sum
-        
-        #Append the value to the local difference vector
-        ld_vector = np.append(ld_vector, central_ld)
-        
+		if (z+i<Nz):
+			central_ld = 4*(data[z+i,y,x]) - local_sum
+			#Append the value to the local difference vector
+			ld_vector = np.append(ld_vector, central_ld)
+		else:
+			d = (z+i)- Nz
+			if (d>=0):
+				continue;
+
     #Return the new local difference vector
     return ld_vector
 
@@ -251,7 +254,7 @@ def predictor(data):
                 ld_vector = np.empty(0)
 
                 #Calculate the local difference vector
-                ld_vector = local_diference_vector(x, y, z, data, local, ld_vector)
+                ld_vector = local_diference_vector(x, y, z, data, local, ld_vector, Nz)
                 
                 #Initialize the weight vector if we're in the first pixel of a band
                 if t == 0:
