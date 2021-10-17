@@ -3,9 +3,6 @@
 #Each appearance of quantized values are replaced with the predicted residual
 
 import numpy as np
-import scipy.io         # loading .mat files
-import matplotlib.pyplot as plt # visualization
-import matplotlib.animation as animation
 import helperlib
 
 #User-defined constants for predictor 
@@ -83,40 +80,33 @@ def local_sums(x,y,z,Nx, data):
 #Described on pages 4-5 to 4-6 of standard - note, a t value of 0 is not passed into the function (not needed)
 #When this function is called, we will run a for loop for each band up to the number_of_bands constant
 def local_diference_vector(x,y,z,data, local_sum, ld_vector, Nz):
+
     #if we're in the original band that the sample is 
     #When y == 0, the north, west, and northwest local differences are 0
-    
-    if y == 0:
-        ld_vector = np.append(ld_vector, [0,0,0])
-        
+    if y==0:
+        ld_vector =np.append(ld_vector, [0,0,0])
+
     #When x ==0, the local differences all have the same calculation
-    elif x == 0:
-        
+    elif x==0:
         north_ld = 4*(data[z,y-1,x]) - local_sum
         ld_vector = np.append(ld_vector, [north_ld, north_ld, north_ld])
         
     #Otherwise, calculations from equations 25,26, and 27 are used
     else:
-        
         north_ld = 4*(data[z,y-1,x]) - local_sum
         west_ld = 4*(data[z,y,x-1]) - local_sum
         northwest_ld = 4*(data[z,y-1,x-1]) - local_sum
         ld_vector = np.append(ld_vector, [north_ld, west_ld, northwest_ld])
-
+    
     #If we're not in the original band (meaning we're in one of the previous bands used for prediction), 
     #only calculate central local difference
     for i in range(1,number_of_bands+1):
-        
-		if (z+i<Nz):
-			central_ld = 4*(data[z+i,y,x]) - local_sum
-			#Append the value to the local difference vector
-			ld_vector = np.append(ld_vector, central_ld)
-		else:
-			d = (z+i)- Nz
-			if (d>=0):
-				continue;
+        if (z+i<Nz):
+            central_ld = 4*(data[z+i,y,x]) - local_sum
+            ld_vector = np.append(ld_vector, central_ld)
+        else:
+            break
 
-    #Return the new local difference vector
     return ld_vector
 
 #Initializes the weight vector for t == 1 using default weight initialization.
@@ -348,28 +338,4 @@ def encoder(delta):
 
 
 
-'''
-#Load input data/image
-# data = datalib.load_data_hdf5(path="images/indian_pines.mat", header="indian_pines")
-data = scipy.io.loadmat("images/indian_pines.mat")
-data = data[0:data_shape[0],0:data_shape[1],0:data_shape[2]]
-
-#Run predictor
-delta = predictor(data)
-print("Here")
-#Run encoder
-#comp_image = encoder(delta)
-
-#We need to write this encoded compressed image to a file -> need more research on this
-'''
-
-def test():
-
-    # scripts for testing
-    indian_pines = scipy.io.loadmat("images/Indian_pines.mat")
-
-    # scipy.io.loadmat() returns dictionary of data
-    print(indian_pines.keys())
-    data = indian_pines['indian_pines']
-    delta = predictor(data)
 
