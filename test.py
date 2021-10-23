@@ -126,10 +126,66 @@ def diff_vector_visualize():
 	show_data(diff_vector, "local difference")
 	plt.show()
 	
+def weight_vector_visualize():
+	print("Weight Weight Initializations:")
+	for z in range(0,Nz):
+		weight_vector_new = np.empty(0)
+		weight_vector_new = comp.weight_initialization(weight_vector_new,z,Nz)
+		print(z, "->", weight_vector_new) 
 
+def prediction_calculation_visualize():
+	print("Predicted Residuals: ")
+	predicted_residuals = np.zeros([Nz,Ny,Nx])
+	for z in range(0,Nz):
+		for y in range(0,Ny):
+			for x in range(0,Nx):
+				t= x + y*Nx
+
+				local = comp.local_sums(x,y,z,Nx,data)
+				ld_vector = np.empty(0)
+				ld_vector = comp.local_diference_vector(x,y,z,data,local,ld_vector, Nz)
+
+				if (t==0):
+					weight_vector_new = np.empty(0)
+					weight_vector_new = comp.weight_initialization(weight_vector_new,z,Nz)
+				
+				predicted_sample, predicted_residual, dr_samp = comp.prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
+				print(x,y,z, "-> ", predicted_residual)
+				predicted_residuals[z,y,x]=predicted_residual
+
+				w_prev = weight_vector_new
+				weight_vector_new=np.empty(0)
+				weight_vector_new=comp.weight_update(dr_samp,predicted_sample,predicted_residual,t,Nx,w_prev,weight_vector_new,ld_vector,z,Nz)
+	show_data(data, "data")
+	show_data(predicted_residuals, "predicted residuals") 
+	plt.show()
+
+def weight_vector_visualize():
+	print("Weight vectors: (for t+1): ")
+	for z in range(0,Nz):
+		for y in range(0,Ny):
+			for x in range(0,Nx):
+				t= x + y*Nx
+
+				local = comp.local_sums(x,y,z,Nx,data)
+				ld_vector = np.empty(0)
+				ld_vector = comp.local_diference_vector(x,y,z,data,local,ld_vector, Nz)
+
+				if (t==0):
+					weight_vector_new = np.empty(0)
+					weight_vector_new = comp.weight_initialization(weight_vector_new,z,Nz)
+				
+				predicted_sample, predicted_residual, dr_samp = comp.prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
+
+				w_prev = weight_vector_new
+				weight_vector_new=np.empty(0)
+				weight_vector_new=comp.weight_update(dr_samp,predicted_sample,predicted_residual,t,Nx,w_prev,weight_vector_new,ld_vector,z,Nz)
+				print(t,"->", weight_vector_new)
+	
 
 		
 
 local_sums_visualize()
 diff_vector_visualize()
-
+weight_vector_visualize()
+weight_vector_visualize()
