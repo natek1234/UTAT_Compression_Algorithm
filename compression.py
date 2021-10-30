@@ -5,7 +5,7 @@
 import numpy as np
 import helperlib
 #User-defined constants for predictor 
-dynamic_range = 32 #user-specified parameter between 2 and 32
+dynamic_range = 2 #user-specified parameter between 2 and 32
 s_min = -1*(2**(dynamic_range-1))
 s_max = 2**(dynamic_range-1)
 s_mid = 0
@@ -14,11 +14,11 @@ resolution = 4 # Can be any integer value from  0 to 4
 damping = 0 #Any integer value from 0 to 2^resolution - 1
 offset = 0 #any integer value from 0 to 2^resolution -1
 max_error = 0 #Max error is an array for each pixel in the image, but for now is used as a single variable
-number_of_bands = 2 #user-defined parameter between 0 and 15 that indicates that number of previous bands used for prediction
+number_of_bands = 5 #user-defined parameter between 0 and 15 that indicates that number of previous bands used for prediction
 register_size = 50 #user-defined parameter from max{32, 2^(D+weight_resolution+1)} to 64
 v_min = -6 #vmin and vmax are user-defined parameters that control the rate at which the algorithm adapts to data statistics
 v_max = 9 # -6 <= v_min < v_max <= 9
-t_inc = (2**4) #parameter from 2^4 to 2^11
+t_inc = 2 #parameter from 2^4 to 2^11
 interband = 1 #interband and intraband offsets are used in updating of weight values (can be between -6 and 5)
 intraband = 1
 w_min = -(2**(weight_resolution+1)) #w_min and w_max values are used in weight updates (Equation 30)
@@ -185,11 +185,9 @@ def weight_update(dr_sample_value, predicted_sample, predicted_residual, t, Nx, 
     #Next, the weight update scaling exponent is calculated, using user parameters of t_inc, v_min, and v_max (Equation 50)
     temp_1 = v_min + np.floor((t-Nx)/t_inc)
     weight_exponent = np.clip(temp_1, v_min, v_max) + dynamic_range - weight_resolution
-    
 
     #The base calculation is used for all three values - Equations 52-54
     base = (helperlib.sign(prediction_error))*(2**(-(weight_exponent+intraband)))
-
 
     #The temporary north, west, and northwest values are calculated using the previous weight vector
     temp_n = weight_vector_prev[0] + np.floor((1/2)*(base*ld_vector[0] +1))
