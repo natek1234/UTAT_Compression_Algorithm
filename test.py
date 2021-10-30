@@ -15,7 +15,9 @@ import compression as comp
 
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.io         # loading .mat files
+import scipy.io
+
+from helperlib import dec_to_bin         # loading .mat files
 # import matplotlib.pyplot as plt # visualization
 # import matplotlib.animation as animation
 
@@ -133,6 +135,7 @@ def weight_vector_visualize():
 		weight_vector_new = comp.weight_initialization(weight_vector_new,z,Nz)
 		print(z, "->", weight_vector_new) 
 
+
 def prediction_calculation_visualize():
 	print("Predicted Residuals: ")
 	predicted_residuals = np.zeros([Nz,Ny,Nx])
@@ -150,7 +153,7 @@ def prediction_calculation_visualize():
 					weight_vector_new = comp.weight_initialization(weight_vector_new,z,Nz)
 				
 				predicted_sample, predicted_residual, dr_samp = comp.prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
-				print(x,y,z, "-> ", predicted_residual)
+				print(x,y,z, "-> ", data[z,y,x], predicted_residual)
 				predicted_residuals[z,y,x]=predicted_residual
 
 				w_prev = weight_vector_new
@@ -160,7 +163,7 @@ def prediction_calculation_visualize():
 	show_data(predicted_residuals, "predicted residuals") 
 	plt.show()
 
-def weight_vector_visualize():
+def weight_vector_update_visualize():
 	print("Weight vectors: (for t+1): ")
 	for z in range(0,Nz):
 		for y in range(0,Ny):
@@ -181,11 +184,64 @@ def weight_vector_visualize():
 				weight_vector_new=np.empty(0)
 				weight_vector_new=comp.weight_update(dr_samp,predicted_sample,predicted_residual,t,Nx,w_prev,weight_vector_new,ld_vector,z,Nz)
 				print(t,"->", weight_vector_new)
-	
+
+
+def mapper_visualize():
+	print("Mapper values:")
+	mapper = np.zeros([Nz, Ny, Nx])
+	for z in range(0,Nz):
+		for y in range(0,Ny):
+			for x in range(0,Nx):
+				t= x + y*Nx
+
+				local = comp.local_sums(x,y,z,Nx,data)
+				ld_vector = np.empty(0)
+				ld_vector = comp.local_diference_vector(x,y,z,data,local,ld_vector, Nz)
+
+				if (t==0):
+					weight_vector_new = np.empty(0)
+					weight_vector_new = comp.weight_initialization(weight_vector_new,z,Nz)
+				
+				predicted_sample, predicted_residual, dr_samp = comp.prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
+				mapper[z,y,x] = comp.mapper(predicted_sample, predicted_residual, t, dr_samp)
+				print(x,y,z, "->", mapper[z,y,x])
+				w_prev = weight_vector_new
+				weight_vector_new=np.empty(0)
+				weight_vector_new=comp.weight_update(dr_samp,predicted_sample,predicted_residual,t,Nx,w_prev,weight_vector_new,ld_vector,z,Nz)
+	show_data(mapper, "Mapped values")
+	plt.show()
+
+def encoder_visualize():
+	mapped = np.zeros([Nz,Ny,Nx])
+	encoded = []
+	for z in range(0,Nz):
+		for y in range(0,Ny):
+			for x in range(0,Nx):
+				t= x + y*Nx
+
+				local = comp.local_sums(x,y,z,Nx,data)
+				ld_vector = np.empty(0)
+				ld_vector = comp.local_diference_vector(x,y,z,data,local,ld_vector, Nz)
+
+				if (t==0):
+					weight_vector_new = np.empty(0)
+					weight_vector_new = comp.weight_initialization(weight_vector_new,z,Nz)
+				
+				predicted_sample, predicted_residual, dr_samp = comp.prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
+				mapped[z,y,x] = comp.mapper(predicted_sample, predicted_residual, t, dr_samp)
+
+				w_prev = weight_vector_new
+				weight_vector_new=np.empty(0)
+				weight_vector_new=comp.weight_update(dr_samp,predicted_sample,predicted_residual,t,Nx,w_prev,weight_vector_new,ld_vector,z,Nz)
+	encoded = comp.encoder(mapped)
+	print(mapped, encoded)
 
 		
 
 local_sums_visualize()
-diff_vector_visualize()
-weight_vector_visualize()
-weight_vector_visualize()
+#diff_vector_visualize()
+#weight_vector_visualize()
+#prediction_calculation_visualize()
+#weight_vector_update_visualize()
+#mapper_visualize()
+#encoder_visualize()

@@ -307,7 +307,7 @@ def encoder(delta):
                     if (np.floor(delta[x,y,z]/(2**code_param))<u_max):
 
                         #Write unary code
-                        u = [1] * np.floor(delta[x,y,z]/(2**code_param))
+                        u = [1] * int(np.floor(delta[x,y,z]/(2**code_param)))
                         u.append(0)
 
                         #Write remainder code
