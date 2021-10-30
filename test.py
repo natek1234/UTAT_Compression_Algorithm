@@ -24,9 +24,9 @@ from helperlib import dec_to_bin         # loading .mat files
 
 # data is 3x3x3
 
-Nx, Ny, Nz = 3,3,3
 
-data = [[
+
+data_one = [[
 		[6, 4, 2],
         [7, 8, 0],
         [4, 8, 5]],
@@ -38,8 +38,10 @@ data = [[
        [[1, 9, 2],
         [9, 5, 2],
         [4, 1, 5]]]
-data = np.array(data)
+data_one = np.array(data_one)
 
+data_two = np.random.randint(0, 100, 1000)
+data_two = np.reshape(data_two, (10,10,10))
 
 
 def pictures():
@@ -94,7 +96,10 @@ def show_data(data, title):
 
 
 #In CCSDS, y defines the row and x defines the column
-def local_sums_visualize():
+def local_sums_visualize(data):
+	Nx = data.shape[2]
+	Ny = data.shape[1]
+	Nz = data.shape[0]
 	local_vector = np.zeros([Nz,Ny,Nx])
 	print("Local Sums:")
 	for z in range (0,Nz):
@@ -112,8 +117,11 @@ def local_sums_visualize():
 	
 	plt.show()
 
-def diff_vector_visualize():
+def diff_vector_visualize(data):
 	print("Local Difference Vectors:")
+	Nx = data.shape[2]
+	Ny = data.shape[1]
+	Nz = data.shape[0]
 	diff_vector = np.zeros([Nz,Ny,Nx])
 	for z in range(0,Nz):
 		for y in range(0,Ny):
@@ -128,17 +136,24 @@ def diff_vector_visualize():
 	show_data(diff_vector, "local difference")
 	plt.show()
 	
-def weight_vector_visualize():
-	print("Weight Weight Initializations:")
+def weight_vector_visualize(data):
+	print("Weight Vector Initializations:")
+	Nx = data.shape[2]
+	Ny = data.shape[1]
+	Nz = data.shape[0]
 	for z in range(0,Nz):
 		weight_vector_new = np.empty(0)
 		weight_vector_new = comp.weight_initialization(weight_vector_new,z,Nz)
 		print(z, "->", weight_vector_new) 
 
 
-def prediction_calculation_visualize():
+def prediction_calculation_visualize(data):
 	print("Predicted Residuals: ")
+	Nx = data.shape[2]
+	Ny = data.shape[1]
+	Nz = data.shape[0]
 	predicted_residuals = np.zeros([Nz,Ny,Nx])
+
 	for z in range(0,Nz):
 		for y in range(0,Ny):
 			for x in range(0,Nx):
@@ -163,8 +178,11 @@ def prediction_calculation_visualize():
 	show_data(predicted_residuals, "predicted residuals") 
 	plt.show()
 
-def weight_vector_update_visualize():
+def weight_vector_update_visualize(data):
 	print("Weight vectors: (for t+1): ")
+	Nx = data.shape[2]
+	Ny = data.shape[1]
+	Nz = data.shape[0]
 	for z in range(0,Nz):
 		for y in range(0,Ny):
 			for x in range(0,Nx):
@@ -186,8 +204,11 @@ def weight_vector_update_visualize():
 				print(t,"->", weight_vector_new)
 
 
-def mapper_visualize():
+def mapper_visualize(data):
 	print("Mapper values:")
+	Nx = data.shape[2]
+	Ny = data.shape[1]
+	Nz = data.shape[0]
 	mapper = np.zeros([Nz, Ny, Nx])
 	for z in range(0,Nz):
 		for y in range(0,Ny):
@@ -211,7 +232,10 @@ def mapper_visualize():
 	show_data(mapper, "Mapped values")
 	plt.show()
 
-def encoder_visualize():
+def encoder_visualize(data):
+	Nx = data.shape[2]
+	Ny = data.shape[1]
+	Nz = data.shape[0]
 	mapped = np.zeros([Nz,Ny,Nx])
 	encoded = []
 	for z in range(0,Nz):
@@ -238,10 +262,12 @@ def encoder_visualize():
 
 		
 
-local_sums_visualize()
-#diff_vector_visualize()
+#local_sums_visualize(data_one)
+#diff_vector_visualize(data_one)
 #weight_vector_visualize()
-#prediction_calculation_visualize()
-#weight_vector_update_visualize()
-#mapper_visualize()
-#encoder_visualize()
+#prediction_calculation_visualize(data_one)
+#weight_vector_update_visualize(data_one)
+#mapper_visualize(data_one)
+#encoder_visualize(data_one)
+
+weight_vector_update_visualize(data_two)
