@@ -1,15 +1,18 @@
 #Purpose: losslessly (or near-losslessly) decompress an image which was compressed by the 
 #         CCSDS123 standard compression.
 import numpy as np
+import helperlib
 
-dynamic_range = 32
-Nz = 220 #Will be passed from compressor
+dynamic_range = 10
+Nx =3
+Ny = 3
+Nz = 3 #Will be passed from compressor
 
 #Entropy encoder metadata that must be passed on from compressor:
 u_max = 8
 initial_count_exp = 1
 accum_initial_constant = 0
-gamma = 1 #stored as gamma - 4
+gamma = 5
 if (accum_initial_constant>30-dynamic_range):
     k_zprime = 2*accum_initial_constant + dynamic_range - 30
 else:
@@ -17,49 +20,66 @@ else:
 
 def decode(encoded):
     data = []
-
     i = 0
     q = 0
     t = 0 #Keep track of position for re-setting accumulator
     while i < len(encoded):
-        if (t>=Nz or t == 0): #If we've arrived at a new band, reset t, counter, and accum values
-            t = 0
+        
+        if (t>=(Nx*Ny)):
+            t=0
+            
+            continue
+
+        if (t == 0): #If we've arrived at a new band, reset t, counter, and accum values
             counter = 2**initial_count_exp
             accum_value = np.floor((1/(2**7))*((3*(2**(k_zprime+6)))-49)*counter)
+            value = encoded[i:i+dynamic_range]
+            r = helperlib.bin_to_dec(value)
+            
+            data.append(r)
+            i+=dynamic_range
+            t+=1
+            continue
 
+        #Else if t is not zero
         if (2*counter>accum_value+np.floor((49/(2**7))*counter)): #Set code parameter
             code_param = 0
-        else:
-            for i in range(dynamic_range, 0, -1):
-                if (counter*(2**i)<= accum_value+np.floor((49/(2**7))*counter)):
-                    code_param = i
+        else:    
+            for j in range(dynamic_range, 0, -1):
+                if (counter*(2**j)<= accum_value+np.floor((49/(2**7))*counter)):
+                    code_param = j
                     break  
+        
 
-
-        if encoded[i] == 1: #unary code is being read
+        while(encoded[i] == 1): #unary code is being read
             i+=1
             q+=1 #append to the unary variable
-        elif encoded[i] == 0:
+        if encoded[i] == 0:
+            
             i+=1 #skip the zero
-
-            #Flag: a bit confused what to do here, as the length of the codeword depends on the value at that pixel, but we havent determined that value yet
-                #Right now, the code is using the value from the previous pixel, which is not what is required
-            if (np.floor(value/(2**code_param)) <u_max):
-                remain = encoded[i:i+code_param] #read and convert the remainder
-            else:
+            
+            
+            if (q == u_max):
                 remain = encoded[i:i+dynamic_range]
-
-            r = int(str(remain), 2)
-
-            value = q*code_param + r
-            data.append(value)
-
-            q = 0
-
-            if (np.floor(value/(2**code_param)) <u_max):
-                i += code_param #move to the next codeword, based on the length
+                i+=dynamic_range
+                r = helperlib.bin_to_dec(remain)
+                value = r
             else:
-                i += dynamic_range
+                if (code_param != 0):
+                    
+                    remain = encoded[i:i+code_param]
+                    
+                    i+=code_param
+                    r = helperlib.bin_to_dec(remain)
+                    value = q*(2**code_param) + r
+                else:
+                    value = q
+           
+            
+            
+            data.append(value)
+            
+            q = 0
             t += 1
 
             #Update counter and accumlator values for the next codeword
@@ -69,8 +89,10 @@ def decode(encoded):
             elif (counter == 2**gamma - 1):
                 accum_value = np.floor((accum_value + value +1)/2)
                 counter = np.floor((counter+1)/2)
-        
-    data = np.array(data)    
+     
+    data = np.array(data)
+     
+    data.shape = (3,3,3)
 
     return data
 

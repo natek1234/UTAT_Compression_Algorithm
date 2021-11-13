@@ -12,6 +12,7 @@ blue books: https://public.ccsds.org/publications/bluebooks.aspx
 '''
 
 import compression as comp
+import decompression as decomp
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -257,10 +258,40 @@ def encoder_visualize(data):
 				w_prev = weight_vector_new
 				weight_vector_new=np.empty(0)
 				weight_vector_new=comp.weight_update(dr_samp,predicted_sample,predicted_residual,t,Nx,w_prev,weight_vector_new,ld_vector,z,Nz)
+	print(mapped)
 	encoded = comp.encoder(mapped)
-	print(mapped, encoded)
+	print(encoded)
 
-		
+def decoder_visualize(data):
+	Nx = data.shape[2]
+	Ny = data.shape[1]
+	Nz = data.shape[0]
+	mapped = np.zeros([Nz,Ny,Nx])
+	encoded = []
+	for z in range(0,Nz):
+		for y in range(0,Ny):
+			for x in range(0,Nx):
+				t= x + y*Nx
+
+				local = comp.local_sums(x,y,z,Nx,data)
+				ld_vector = np.empty(0)
+				ld_vector = comp.local_diference_vector(x,y,z,data,local,ld_vector, Nz)
+
+				if (t==0):
+					weight_vector_new = np.empty(0)
+					weight_vector_new = comp.weight_initialization(weight_vector_new,z,Nz)
+				
+				predicted_sample, predicted_residual, dr_samp = comp.prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
+				mapped[z,y,x] = comp.mapper(predicted_sample, predicted_residual, t, dr_samp)
+
+				w_prev = weight_vector_new
+				weight_vector_new=np.empty(0)
+				weight_vector_new=comp.weight_update(dr_samp,predicted_sample,predicted_residual,t,Nx,w_prev,weight_vector_new,ld_vector,z,Nz)
+	print(mapped)
+	encoded = comp.encoder(mapped)
+	decoded = decomp.decode(encoded)
+	print(decoded)
+
 
 #local_sums_visualize(data_one)
 #diff_vector_visualize(data_one)
@@ -269,5 +300,6 @@ def encoder_visualize(data):
 #weight_vector_update_visualize(data_one)
 #mapper_visualize(data_one)
 #encoder_visualize(data_one)
+decoder_visualize(data_one)
 
-weight_vector_update_visualize(data_two)
+#weight_vector_update_visualize(data_two)

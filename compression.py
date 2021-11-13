@@ -5,7 +5,7 @@
 import numpy as np
 import helperlib
 #User-defined constants for predictor 
-dynamic_range = 2 #user-specified parameter between 2 and 32
+dynamic_range = 10 #user-specified parameter between 2 and 32
 s_min = -1*(2**(dynamic_range-1))
 s_max = 2**(dynamic_range-1)
 s_mid = 0
@@ -18,7 +18,7 @@ number_of_bands = 5 #user-defined parameter between 0 and 15 that indicates that
 register_size = 50 #user-defined parameter from max{32, 2^(D+weight_resolution+1)} to 64
 v_min = -6 #vmin and vmax are user-defined parameters that control the rate at which the algorithm adapts to data statistics
 v_max = 9 # -6 <= v_min < v_max <= 9
-t_inc = 2 #parameter from 2^4 to 2^11
+t_inc = 2**4 #parameter from 2^4 to 2^11
 interband = 1 #interband and intraband offsets are used in updating of weight values (can be between -6 and 5)
 intraband = 1
 w_min = -(2**(weight_resolution+1)) #w_min and w_max values are used in weight updates (Equation 30)
@@ -285,33 +285,43 @@ def encoder(delta):
         for y in range(0,Ny):
             for x in range(0,Nx):
                 t = y*Nx + x
-
                 #At the first pixel, the endoced value is just the D-bit representation of delta
                 if (t==0):
-                    code = helperlib.dec_to_bin(delta[x,y,z], dynamic_range)
-                    encoded.append(code)
-
+                    code = helperlib.dec_to_bin(delta[z,y,x], dynamic_range)
+                    encoded += code
                 else:
                     #Using the adaptive code statistics, set the code parameter, according to equation 62 in section 5.4.3.2.4
                     if (2*counter>accum_value+np.floor((49/(2**7))*counter)):
                         code_param = 0
                     else:
+                        
                         for i in range(dynamic_range, 0, -1):
                             if (counter*(2**i)<= accum_value+np.floor((49/(2**7))*counter)):
                                 code_param = i
                                 break
                     
                     #Use golomb power of two code words to write a binary codeword, based on the user-defined unary length limit
-                    if (np.floor(delta[x,y,z]/(2**code_param))<u_max):
-
-                        #Write unary code
-                        u = [1] * int(np.floor(delta[x,y,z]/(2**code_param)))
-                        u.append(0)
-
-                        #Write remainder code
-                        r = helperlib.dec_to_bin(delta[x,y,z], code_param)
+                    if (np.floor(delta[z,y,x]/(2**code_param))<u_max):
                         
-                        encoded += u + r
+                        #Write unary code
+                        u = [1] * int(np.floor(delta[z,y,x]/(2**code_param)))
+                        u.append(0)
+                        
+                        #Write remainder code
+                        r = helperlib.dec_to_bin(delta[z,y,x], dynamic_range)
+                        if (code_param ==0):
+                            encoded+=u
+                            
+                        else:
+                            
+                            r = r[-code_param:]
+                            
+                            encoded+=u+r
+                            
+                        
+                        
+                        
+                        
                         
                     else:
                         
@@ -320,20 +330,21 @@ def encoder(delta):
                         u.append(0)
                         
                         #Remainder code
-                        r = helperlib.dec_to_bin(delta[x,y,z], dynamic_range)
+                        r = helperlib.dec_to_bin(delta[z,y,x], dynamic_range)
 
                         encoded += u + r
+                        
             
                 #Update counter and accumulator values after each pixel, according to section 5.4.3.2.3
-                if (t>1):
+                if (t>=1):
                     if (counter< 2**gamma - 1):
-                        accum_value = accum_value + delta[x,y,z]
+                        accum_value = accum_value + delta[z,y,x]
                         counter = counter + 1
                     elif (counter == 2**gamma - 1):
-                        accum_value = np.floor((accum_value + delta[x,y,z] +1)/2)
+                        accum_value = np.floor((accum_value + delta[z,y,x] +1)/2)
                         counter = np.floor((counter+1)/2)
 
-    encoded = np.array(encoded)
+    
     return encoded 
 
 
