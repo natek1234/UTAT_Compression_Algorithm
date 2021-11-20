@@ -305,7 +305,6 @@ def unpredict_visualize(data):
 				t= x + y*Nx
 
 				local = comp.local_sums(x,y,z,Nx,data)
-				print(local)
 				ld_vector = np.empty(0)
 				ld_vector = comp.local_diference_vector(x,y,z,data,local,ld_vector, Nz)
 
@@ -314,6 +313,7 @@ def unpredict_visualize(data):
 					weight_vector_new = comp.weight_initialization(weight_vector_new,z,Nz)
 				
 				predicted_sample, predicted_residual, dr_samp = comp.prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
+				print(predicted_sample)
 				mapped[z,y,x] = comp.mapper(predicted_sample, predicted_residual, t, dr_samp)
 
 				w_prev = weight_vector_new
@@ -339,4 +339,5 @@ def unpredict_visualize(data):
 #encoder_visualize(data_one)
 #decoder_visualize(data_one)
 unpredict_visualize(data_one)
+
 #weight_vector_update_visualize(data_two)

@@ -1,5 +1,8 @@
 #Purpose: losslessly (or near-losslessly) decompress an image which was compressed by the 
 #         CCSDS123 standard compression.
+#Current issue: to run the prediction algorithm again on the ground, we must perform a local difference calculation. However, 
+#the local difference calculation depends on the original data values in previous spectral bands, which we've not calculated
+#yet as we move through the image. Need to read through C implementation to understand how this step is performed.
 import numpy as np
 import helperlib
 import compression as comp
@@ -100,6 +103,7 @@ def decode(encoded):
 
     return data
 
+
 def unmap(predicted_sample, mapped):
 
     #Calculate the value of theta using the predicted sample - this code assumes max_error is 0 (which we currently have it set to),
@@ -152,7 +156,6 @@ def unpredict(mapped):
 
                 #Calculate the local difference vector
                 ld_vector = comp.local_diference_vector(x, y, z, data, local, ld_vector, Nz)
-                
                 #Initialize the weight vector if we're in the first pixel of a band
                 if t == 0:
                     weight_vector_new = np.empty(0)

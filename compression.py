@@ -106,7 +106,7 @@ def local_diference_vector(x,y,z,data, local_sum, ld_vector, Nz):
             ld_vector = np.append(ld_vector, central_ld)
         else:
             break
-    
+   
     return ld_vector
 
 #Initializes the weight vector for t == 1 using default weight initialization.
