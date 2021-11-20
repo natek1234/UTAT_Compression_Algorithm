@@ -7,6 +7,9 @@ dynamic_range = 10
 Nx =3
 Ny = 3
 Nz = 3 #Will be passed from compressor
+s_min = -1*(2**(dynamic_range-1))
+s_max = 2**(dynamic_range-1)
+s_mid = 0
 
 #Entropy encoder metadata that must be passed on from compressor:
 u_max = 8
@@ -96,11 +99,47 @@ def decode(encoded):
 
     return data
 
-def reverse_predictor():
+def unmap(predicted_sample, mapped):
 
-    return 0
+    #Calculate the value of theta using the predicted sample - this code assumes max_error is 0 (which we currently have it set to),
+    #but can be modified to accomadate for max error.
+    theta = predicted_sample - s_min
+    select = True
+    if (theta > s_max - predicted_sample):
+        theta = s_max - predicted_sample
+        select = False
+    
+    dr_samp = 2*predicted_sample
+
+    #If mapped depends on theta, we make this calculation
+    if (mapped > 2*theta):
+        if (select):
+            delta = mapped - theta
+        else:
+            delta = theta - mapped
+    
+    #Otherwise, based on if mapped is stored as an even or odd value, we make a calculation
+    else:
+        if(mapped % 2 == 0):
+            if (dr_samp %2 == 0):
+                sign = -1
+            else:
+                sign = 1
+            delta = (sign)*(mapped/2)
+        else:
+            if (dr_samp %2 == 0):
+                sign = 1
+            else:
+                sign = -1
+            delta = (sign)*(mapped+1/2)
+
+    #Since sample - predicted = delta
+    sample = delta + predicted_sample
+    return sample
 
 
-#Run the decoding algorithm
-def main():
+#Run the reverse prediction algorithm
+def unpredict(mapped):
+
+    
     return 0

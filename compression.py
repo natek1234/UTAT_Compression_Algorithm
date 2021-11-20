@@ -255,7 +255,7 @@ def predictor(data):
                 predicted_sample, predicted_residual, dr_samp = prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
 
                 #Map the predicted residual for the final prediction and store it in the return array
-                predictions[x,y,z] = mapper(predicted_sample, predicted_residual, t, dr_samp)
+                predictions[z,y,x] = mapper(predicted_sample, predicted_residual, t, dr_samp)
 
         
                 #Assign the weight vector to be the previous one, and update the new one for the next pixel

@@ -300,6 +300,9 @@ def decoder_visualize(data):
 #weight_vector_update_visualize(data_one)
 #mapper_visualize(data_one)
 #encoder_visualize(data_one)
-decoder_visualize(data_one)
+#decoder_visualize(data_one)
 
 #weight_vector_update_visualize(data_two)
+q = 2
+if (q%2 == 0):
+	print("yay")
