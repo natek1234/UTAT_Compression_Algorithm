@@ -2,6 +2,7 @@
 #         CCSDS123 standard compression.
 import numpy as np
 import helperlib
+import compression as comp
 
 dynamic_range = 10
 Nx =3
@@ -102,7 +103,7 @@ def decode(encoded):
 def unmap(predicted_sample, mapped):
 
     #Calculate the value of theta using the predicted sample - this code assumes max_error is 0 (which we currently have it set to),
-    #but can be modified to accomadate for max error.
+    #but can be modified to accomadate for max error (depending on t).
     theta = predicted_sample - s_min
     select = True
     if (theta > s_max - predicted_sample):
@@ -122,15 +123,15 @@ def unmap(predicted_sample, mapped):
     else:
         if(mapped % 2 == 0):
             if (dr_samp %2 == 0):
-                sign = -1
-            else:
                 sign = 1
+            else:
+                sign = -1
             delta = (sign)*(mapped/2)
         else:
             if (dr_samp %2 == 0):
-                sign = 1
-            else:
                 sign = -1
+            else:
+                sign = 1
             delta = (sign)*(mapped+1/2)
 
     #Since sample - predicted = delta
@@ -141,5 +142,5 @@ def unmap(predicted_sample, mapped):
 #Run the reverse prediction algorithm
 def unpredict(mapped):
 
-    
+
     return 0
