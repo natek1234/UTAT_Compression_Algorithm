@@ -14,7 +14,7 @@ resolution = 4 # Can be any integer value from  0 to 4
 damping = 0 #Any integer value from 0 to 2^resolution - 1
 offset = 0 #any integer value from 0 to 2^resolution -1
 max_error = 0 #Max error is an array for each pixel in the image, but for now is used as a single variable
-number_of_bands = 5 #user-defined parameter between 0 and 15 that indicates that number of previous bands used for prediction
+number_of_bands = 2 #user-defined parameter between 0 and 15 that indicates that number of previous bands used for prediction
 register_size = 50 #user-defined parameter from max{32, 2^(D+weight_resolution+1)} to 64
 v_min = -6 #vmin and vmax are user-defined parameters that control the rate at which the algorithm adapts to data statistics
 v_max = 9 # -6 <= v_min < v_max <= 9
@@ -101,11 +101,12 @@ def local_diference_vector(x,y,z,data, local_sum, ld_vector, Nz):
     #only calculate central local difference
     for i in range(1,number_of_bands+1):
         if (z+i<Nz):
+            
             central_ld = 4*(data[z+i,y,x]) - local_sum
             ld_vector = np.append(ld_vector, central_ld)
         else:
             break
-
+    
     return ld_vector
 
 #Initializes the weight vector for t == 1 using default weight initialization.
@@ -117,6 +118,7 @@ def weight_initialization(weight_vector,z, Nz):
     
     #The first previous band is initialized according to equation 33(a)
     if (z != Nz-1):
+        
         weight_one = (7/8)*(2**weight_resolution)
         weight_vector = np.append(weight_vector, weight_one)
 
