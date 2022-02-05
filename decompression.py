@@ -104,25 +104,21 @@ def decode(encoded):
     return data
 
 
-def unmap(predicted_sample, mapped):
-
+def unmap(predicted_sample, mapped, dr_samp):
+    
     #Calculate the value of theta using the predicted sample - this code assumes max_error is 0 (which we currently have it set to),
     #but can be modified to accomadate for max error (depending on t).
-    theta = predicted_sample - s_min
-    select = True
-    if (theta > s_max - predicted_sample):
-        theta = s_max - predicted_sample
-        select = False
+    theta = min(predicted_sample-s_min, s_max -predicted_sample)
     
-    dr_samp = 2*predicted_sample
+    
 
     #If mapped depends on theta, we make this calculation
     if (mapped > 2*theta):
-        if (select):
+        if (theta == predicted_sample - s_min):
             delta = mapped - theta
         else:
             delta = theta - mapped
-    
+        
     #Otherwise, based on if mapped is stored as an even or odd value, we make a calculation
     else:
         if(mapped % 2 == 0):
@@ -136,38 +132,57 @@ def unmap(predicted_sample, mapped):
                 sign = -1
             else:
                 sign = 1
-            delta = (sign)*(mapped+1/2)
+            delta = (sign)*((mapped+1)/2)
+        
 
     #Since sample - predicted = delta
     sample = delta + predicted_sample
-    return sample
+    return sample, delta
 
 def unpredict(mapped):
     data = np.zeros_like(mapped)
-    for z in range(0,Nz):
+    for z in range(Nz-1, -1,-1):
         for y in range(0, Ny):
             for x in range(0, Nx):
                 
                 t = y*(Nx) + x
-
+                
+                if (t==0):
+                    #Initialize the weight vector if we're in the first pixel of a band
+                    weight_vector_new = np.empty(0)
+                    weight_vector_new = comp.weight_initialization(weight_vector_new, z, Nz)
+                    data[z,y,x], predicted_residual = unmap(s_mid, mapped[z,y,x], s_mid*2)
+                    continue
+                
+                
                 #Calculate local sum at that pixel
                 local = comp.local_sums(x, y, z, Nx, data)
+                
                 ld_vector = np.empty(0)
 
                 #Calculate the local difference vector
                 ld_vector = comp.local_diference_vector(x, y, z, data, local, ld_vector, Nz)
-                #Initialize the weight vector if we're in the first pixel of a band
-                if t == 0:
-                    weight_vector_new = np.empty(0)
-                    weight_vector_new = comp.weight_initialization(weight_vector_new, z, Nz)
+                
                 
                 #Calculate the predicted residual, and other needed values (high resolution and double resolution predicted sample values)
-                predicted_sample, predicted_residual, dr_samp = comp.prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
+                predicted_sample, discard, dr_samp = comp.prediction_calculation(ld_vector, weight_vector_new, local, t, x, y, z, data)
+                
+                
                 #Using the unmap fucntion, compute the 
-                data[z,y,x] = unmap(predicted_sample, mapped[z,y,x])
+                data[z,y,x], predicted_residual = unmap(predicted_sample, mapped[z,y,x], dr_samp)
 
                 #Assign the weight vector to be the previous one, and update the new one for the next pixel
                 w_prev = weight_vector_new
                 weight_vector_new = np.empty(0)
                 weight_vector_new = comp.weight_update(dr_samp, predicted_sample, predicted_residual, t, Nx, w_prev, weight_vector_new, ld_vector,z,Nz)
+                
+        #reorderBands(data, Nz)
     return data
+
+
+def reorderBands(bands, Nz):
+    tempBand = bands[0]
+    for i in range(0, Nz-1):
+        bands[i] = bands[i+1]
+    
+    bands[Nz-1] = tempBand
